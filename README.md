@@ -17,3 +17,12 @@ git clone --recursive https://github.com/PabloValgaRuiz/SIRgraphs.git
 
 # 3. Build and Run
 # Set your build configuration to "Release" or "Debug" (x64) and run.
+```
+
+## Dependencies
+
+Dear ImGui (Docking Branch) - Easy UI library.
+
+GLFW - Window and OpenGL context management.
+
+PCG Random - High-performance random number generation.
