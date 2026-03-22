@@ -192,8 +192,8 @@ void MyApp::Render() {
 
     ImGui::PushItemWidth(100.0f);
 
-    static int numNodesER = 10;
-    static float pER = 0.1f;
+    static int numNodesER = 20;
+    static float pER = 0.05f;
 
     if (ImGui::Button("Create Erdos-Renyi graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
         createRandomGraph(numNodesER, pER, viewportSize.x, viewportSize.y);
@@ -201,8 +201,8 @@ void MyApp::Render() {
     ImGui::DragInt("Number of nodes (ER)", &numNodesER, 0.25f, 1, 50);
     ImGui::DragFloat("Edge probability (ER)", &pER, 0.0025f, 0.0f, 1.0f, "%.2f");
 
-    static int numNodesBA = 10;
-    static int k = 4;
+    static int numNodesBA = 20;
+    static int k = 1;
 
     if (ImGui::Button("Create Barabasi-Albert graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
         createBarabasiAlbertGraph(numNodesBA, k, viewportSize.x, viewportSize.y);
@@ -226,10 +226,10 @@ void MyApp::Render() {
 
     ImGui::PushItemWidth(100.0f);
 
-    ImGui::DragFloat("Repulsion force", &repulsionForce, 20000.0f, 20000.0f, 20000000.0f, "%.0f");
+    ImGui::DragFloat("Repulsion force", &repulsionForce, 10000.0f, 10000.0f, 20000000.0f, "%.0f");
     ImGui::DragFloat("Spring Length", &springLength, 0.5f, 5.0f, 500.0f, "%.0f");
     ImGui::DragFloat("Spring Stiffness", &springStiffness, 1.0f, 25.0f, 2500.0f, "%.0f");
-    ImGui::DragFloat("Damping", &damping, 0.001f, 0.0f, 1.0f, "%.2f");
+    ImGui::DragFloat("Damping", &damping, 0.001f, 0.5f, 1.0f, "%.2f");
     ImGui::DragFloat("Central gravity", &centralGravity, 2.0f, 1.0f, 3000.0f, "%.0f");
 
     ImGui::PopItemWidth();

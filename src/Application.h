@@ -126,7 +126,7 @@ private:
     int isInfectionMode = 0;
 
     // Physics constants
-    float repulsionForce = 5000000.0f;
+    float repulsionForce = 2000000.0f;
     float springLength = 70.0f;
     float springStiffness = 500.0f;
     float damping = 0.95f;
