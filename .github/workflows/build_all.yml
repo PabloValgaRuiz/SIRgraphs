@@ -1,0 +1,60 @@
+name: Build Cross-Platform
+# File Generated with Google Gemini
+# Trigger this script every time code is pushed to the 'main' branch
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ==========================================
+  # WINDOWS BUILD SERVER
+  # ==========================================
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code and Submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive # CRITICAL: Downloads ImGui!
+
+    - name: Configure CMake
+      run: cmake -B build -S .
+
+    - name: Build Application (Release)
+      run: cmake --build build --config Release
+
+    - name: Upload Windows Executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: EpidemicSim-Windows
+        path: build/Release/EpidemicSim.exe
+
+  # ==========================================
+  # MAC BUILD SERVER
+  # ==========================================
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout Code and Submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Mac Dependencies
+      run: brew install glfw cmake
+
+    - name: Configure CMake
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build Application
+      run: cmake --build build --config Release
+
+    - name: Upload Mac App
+      uses: actions/upload-artifact@v4
+      with:
+        name: EpidemicSim-MacOS
+        path: build/EpidemicSim
