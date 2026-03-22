@@ -1,4 +1,5 @@
 #include "Application.h"
+
 #include <random>
 #include "pcg_random.hpp"
 
@@ -87,6 +88,7 @@ void MyApp::Render() {
     ImGui::DockSpaceOverViewport(0, viewport);
 
     // create a new ImGui window called "Simulation Viewport"
+    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::Begin("Simulation Viewport", nullptr);
 
     viewportSize = ImGui::GetContentRegionAvail();

@@ -3,6 +3,10 @@ x64/
 x86/
 Debug/
 Release/
+out/
+build/
+CMakeCache.txt
+CMakeFiles/
 *.exe
 *.obj
 *.pdb
