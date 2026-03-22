@@ -52,6 +52,14 @@ make
 # Run the program
 ./SIRgraphs
 ```
+## Binary
+
+The binary files can be found in the releases window for Windows and macOS.
+For macOS, make sure glfw is installed.
+```
+brew install glfw
+```
+
 ## Dependencies
 
 Dear ImGui (Docking Branch) - Easy UI library.
