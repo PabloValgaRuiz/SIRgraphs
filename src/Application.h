@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <iostream>
+#include <random>
+#include "pcg_random.hpp"
 
 enum NodeState {
     S = 0,
@@ -93,7 +95,6 @@ public:
             id++;
         }
         nodes.emplace(id, Node(id, pos, vel, r, state));
-        std::cout << "Added node with ID: " << id << std::endl;
         return id;
     }
     void removeLink(int nodeA, int nodeB) {
@@ -118,6 +119,8 @@ private:
     int draggedNodeId = -1;
 
     ImVec2 viewportSize = ImVec2(800.0f, 600.0f);
+    float worldSpaceZoom = 1.0f;
+    ImVec2 worldSpaceOffset = ImVec2(400.0f, 300.0f);
 
     std::unordered_map<int, Node> nodes;
     std::unordered_set<Link> links;
@@ -133,9 +136,26 @@ private:
     float centralGravity = 1000.0f;
 
     // SIR dynamics
+
+    // random number generator shared between all functions
+    pcg64 rng{ pcg_extras::seed_seq_from<std::random_device>{} };
+
     bool isSimulationPlaying = false;
     float simulationTime = 0.0f;
 
+    int epidemicType = 0; // 0 -> SIR, 1 -> SIS
+
     float lambdaInfection = 0.6f; // Infection rate
     float muRecovery = 0.2f; // Recovery rate
+
+
+
+    // LOG NODES AND LINKS
+    void logNodesLinks() {
+        std::cout << "\033[F\33[2K"; // Move up and clear line 2
+        std::cout << "\033[F\33[2K"; // Move up and clear line 1
+        std::cout << "\r";           // Reset cursor to start of line
+        std::cout << "Nodes: " << nodes.size() << std::endl;
+        std::cout << "Links: " << links.size() << std::endl;
+    }
 };
