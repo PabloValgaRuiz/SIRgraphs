@@ -24,7 +24,7 @@ set(APP_SOURCES
 )
 
 # build an executable with ImGui's code and the app's code
-add_executable(SIRgraphs ${APP_SOURCES} ${IMGUI_SOURCES})
+add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES})
 
 
 target_include_directories(SIRgraphs PRIVATE

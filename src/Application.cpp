@@ -316,7 +316,7 @@ void MyApp::Render() {
     }
 
     ImGui::PushItemWidth(400.0f);
-    ImGui::PlotLines("", values, IM_COUNTOF(values), values_offset , 0, 0.0f, maxValue * 1.2f, ImVec2(0.0f, 200.0f));
+    ImGui::PlotLines("I", values, IM_COUNTOF(values), values_offset , 0, 0.0f, maxValue * 1.2f, ImVec2(0.0f, 200.0f));
     ImGui::PopItemWidth();
 
     ImGui::End();
@@ -438,13 +438,13 @@ void MyApp::UpdateSIR(float deltaTime)
 
 void MyApp::createRandomGraph(int numNodes, float p, float width, float height) {
 
-    static std::uniform_real_distribution<double> position_dist(0.2, 0.8);
+    static std::uniform_real_distribution<double> position_dist(-300, 300);
     static std::uniform_real_distribution<double> p_dist(0, 1);
 
     nodes.clear();
     links.clear();
     for (int i = 0; i < numNodes; i++) {
-        addNode(ImVec2(position_dist(rng) * width, position_dist(rng) * height));
+        addNode(ImVec2(position_dist(rng), position_dist(rng)));
     }
     for (const auto& [id1, node_1] : nodes) {
         for (const auto& [id2, node_2] : nodes) {
@@ -467,12 +467,13 @@ void MyApp::addNodeErdosRenyi(float p) {
     std::vector<int> connected_nodes;
 
     for (const auto& [key, node] : nodes) {
-        if (p_dist(rng) < p) {
+        if (p_dist(rng) < p && id != key) {
             addLink(id, key);
             connected_nodes.push_back(key);
         }
     }
 
+    static std::uniform_real_distribution<double> rand_pos_shift(-50, 50);
     // get coordinates average and place the node there
     if (connected_nodes.size() > 0) {
         ImVec2 avg_coords(0, 0);
@@ -481,11 +482,13 @@ void MyApp::addNodeErdosRenyi(float p) {
             avg_coords.y += nodes.at(key).position.y;
         }
         // shift the coordinates a bit
-        static std::uniform_real_distribution<double> rand_pos_shift(0.5, 1.5);
 
-        avg_coords = ImVec2(rand_pos_shift(rng) * avg_coords.x / connected_nodes.size(),
-            rand_pos_shift(rng) * avg_coords.y / connected_nodes.size());
+        avg_coords = ImVec2(rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
+                            rand_pos_shift(rng) + avg_coords.y / connected_nodes.size());
         nodes.at(id).position = avg_coords;
+    }
+    else {
+        nodes.at(id).position = ImVec2(rand_pos_shift(rng), rand_pos_shift(rng));
     }
 }
 
@@ -528,6 +531,8 @@ void MyApp::addNodeBarabasiAlbert(int k) {
 
         // node to connect to
         for (auto& [key, degree] : degrees_copy) {
+            if (id == key) continue;
+
             if (nLinks < 2)
                 counter = 1.0;
             else
@@ -553,16 +558,16 @@ void MyApp::addNodeBarabasiAlbert(int k) {
         avg_coords.y += nodes.at(key).position.y;
     }
     // shift the coordinates a bit
-    static std::uniform_real_distribution<double> rand_pos_shift(0.8, 1.2);
+    static std::uniform_real_distribution<double> rand_pos_shift(-50, 50);
 
-    avg_coords = ImVec2(rand_pos_shift(rng) * avg_coords.x / connected_nodes.size(),
-        rand_pos_shift(rng) * avg_coords.y / connected_nodes.size());
+    avg_coords = ImVec2(rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
+        rand_pos_shift(rng) + avg_coords.y / connected_nodes.size());
     nodes.at(id).position = avg_coords;
 }
 
 void MyApp::createBarabasiAlbertGraph(int numNodes, int k, float width, float height) {
 
-    static std::uniform_real_distribution<double> position_dist(0.2, 0.8);
+    static std::uniform_real_distribution<double> position_dist(-300, 300);
     static std::uniform_real_distribution<double> p_dist(0, 1);
 
     nodes.clear();
@@ -573,7 +578,7 @@ void MyApp::createBarabasiAlbertGraph(int numNodes, int k, float width, float he
     // keep up with degree count
 
     for (int i = 0; i < k; i++) {
-        int id = addNode(ImVec2(position_dist(rng) * width, position_dist(rng) * height));
+        int id = addNode(ImVec2(position_dist(rng), position_dist(rng)));
         for (auto& [key, node] : nodes) {
             if (id != key) {
                 addLink(id, key);

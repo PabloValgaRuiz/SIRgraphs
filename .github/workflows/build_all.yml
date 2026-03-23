@@ -53,8 +53,17 @@ jobs:
     - name: Build Application
       run: cmake --build build --config Release
 
+      # Sign the app with a local dummy certificate and compress it
+    - name: Package Mac App
+      run: |
+        cd build
+        # Ad-hoc sign the app so Apple Silicon doesn't instantly kill it
+        codesign --force --deep -s - SIRgraphs.app
+        # Compress it to preserve the +x execution permissions
+        tar -czvf SIRgraphs-MacOS.tar.gz SIRgraphs.app
+
     - name: Upload Mac App
       uses: actions/upload-artifact@v4
       with:
         name: SIRgraphs-MacOS
-        path: build/SIRgraphs
+        path: build/SIRgraphs-MacOS.tar.gz
