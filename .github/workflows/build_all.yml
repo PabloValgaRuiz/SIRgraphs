@@ -67,3 +67,40 @@ jobs:
       with:
         name: SIRgraphs-MacOS
         path: build/SIRgraphs-MacOS.tar.gz
+
+
+  # ==========================================
+  # LINUX BUILD SERVER (Ubuntu)
+  # ==========================================
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code and Submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    # graphics and windowing headers to compile GLFW/OpenGL
+    - name: Install Linux Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libglfw3-dev libgl1-mesa-dev xorg-dev
+
+    - name: Configure CMake
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build Application
+      run: cmake --build build --config Release
+
+    # compress it on the server to preserve the +x executable permissions
+    - name: Package Linux App
+      run: |
+        cd build
+        tar -czvf SIRgraphs-Linux.tar.gz SIRgraphs
+
+    - name: Upload Linux App
+      uses: actions/upload-artifact@v4
+      with:
+        name: SIRgraphs-Linux
+        path: build/SIRgraphs-Linux.tar.gz
