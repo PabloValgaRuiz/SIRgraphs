@@ -198,6 +198,15 @@ void MyApp::Render() {
         auto draggedPosition = nodes.at(draggedNodeId).position;
         auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
+
+        //PHYSICS: PUSH THE NODE TOWARDS THE MOUSE
+        ImVec2 draggingVec = ImVec2(worldMousePos.x - draggedPosition.x, worldMousePos.y - draggedPosition.y);
+        float draggingDist = sqrt(draggingVec.x * draggingVec.x + draggingVec.y * draggingVec.y);
+        ImVec2 normalizedDraggingVec = ImVec2(draggingVec.x / draggingDist, draggingVec.y / draggingDist);
+        if (draggingDist > springLength) {
+        nodes.at(draggedNodeId).velocity.x += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.x * deltaTime;
+        nodes.at(draggedNodeId).velocity.y += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.y * deltaTime;
+        }
     }
 
     //ImGui::SetCursorPosY();
