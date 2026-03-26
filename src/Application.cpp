@@ -199,14 +199,14 @@ void MyApp::Render() {
         auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
 
-        //PHYSICS: PUSH THE NODE TOWARDS THE MOUSE
-        ImVec2 draggingVec = ImVec2(worldMousePos.x - draggedPosition.x, worldMousePos.y - draggedPosition.y);
-        float draggingDist = sqrt(draggingVec.x * draggingVec.x + draggingVec.y * draggingVec.y);
-        ImVec2 normalizedDraggingVec = ImVec2(draggingVec.x / draggingDist, draggingVec.y / draggingDist);
-        if (draggingDist > springLength) {
-        nodes.at(draggedNodeId).velocity.x += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.x * deltaTime;
-        nodes.at(draggedNodeId).velocity.y += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.y * deltaTime;
-        }
+        ////PHYSICS: PUSH THE NODE TOWARDS THE MOUSE
+        //ImVec2 draggingVec = ImVec2(worldMousePos.x - draggedPosition.x, worldMousePos.y - draggedPosition.y);
+        //float draggingDist = sqrt(draggingVec.x * draggingVec.x + draggingVec.y * draggingVec.y);
+        //ImVec2 normalizedDraggingVec = ImVec2(draggingVec.x / draggingDist, draggingVec.y / draggingDist);
+        //if (draggingDist > springLength) {
+        //nodes.at(draggedNodeId).accel.x += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.x;
+        //nodes.at(draggedNodeId).accel.y += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.y;
+        //}
     }
 
     //ImGui::SetCursorPosY();
@@ -333,9 +333,7 @@ void MyApp::Render() {
     //ImGui::ShowDemoWindow();
 }
 
-void MyApp::UpdatePhysics(float deltaTime)
-{
-    if (deltaTime <= 0.0f) return;
+void MyApp::addForces() {
 
     // node repulsion
     for (auto& pairA : nodes) {
@@ -354,11 +352,11 @@ void MyApp::UpdatePhysics(float deltaTime)
             repulsionStrength.x = repulsionForce * distanceVec.x / (distanceSquared + 0.01f);
             repulsionStrength.y = repulsionForce * distanceVec.y / (distanceSquared + 0.01f);
 
-            nodeA.velocity.x += repulsionStrength.x * deltaTime;
-            nodeA.velocity.y += repulsionStrength.y * deltaTime;
+            nodeA.accel.x += repulsionStrength.x;
+            nodeA.accel.y += repulsionStrength.y;
 
-            nodeB.velocity.x -= repulsionStrength.x * deltaTime;
-            nodeB.velocity.y -= repulsionStrength.y * deltaTime;
+            nodeB.accel.x -= repulsionStrength.x;
+            nodeB.accel.y -= repulsionStrength.y;
         }
     }
 
@@ -374,34 +372,67 @@ void MyApp::UpdatePhysics(float deltaTime)
         attractionStrength.x = springStiffness * (springLength - distance) * normalizedDistanceVec.x;
         attractionStrength.y = springStiffness * (springLength - distance) * normalizedDistanceVec.y;
 
-        nodeA.velocity.x += attractionStrength.x * deltaTime;
-        nodeA.velocity.y += attractionStrength.y * deltaTime;
+        nodeA.accel.x += attractionStrength.x;
+        nodeA.accel.y += attractionStrength.y;
 
-        nodeB.velocity.x -= attractionStrength.x * deltaTime;
-        nodeB.velocity.y -= attractionStrength.y * deltaTime;
+        nodeB.accel.x -= attractionStrength.x;
+        nodeB.accel.y -= attractionStrength.y;
     }
 
     // update positions based on velocity and apply damping
     for (auto& pair : nodes) {
         Node& node = pair.second;
 
-
         // Slight force towards the center of the window
         // get center of the world space
         ImVec2 center = ImVec2(0, 0);
-        node.velocity.x += (center.x - node.position.x) * centralGravity * deltaTime;
-        node.velocity.y += (center.y - node.position.y) * centralGravity * deltaTime;
+        node.accel.x += (center.x - node.position.x) * centralGravity;
+        node.accel.y += (center.y - node.position.y) * centralGravity;
 
-        // damping
-        node.velocity.x *= (1 - damping);
-        node.velocity.y *= (1 - damping);
-
-        // Update position based on velocity and time step
-        node.position.x += node.velocity.x * deltaTime;
-        node.position.y += node.velocity.y * deltaTime;
     }
 
 }
+
+void MyApp::UpdatePhysics(float deltaTime) {
+    if (deltaTime <= 0.0f) return;
+
+    for (auto& pair : nodes) {
+        Node& node = pair.second;
+        node.accel.x = 0;
+        node.accel.y = 0;
+    }
+    addForces();
+
+    // damping
+    //node.velocity.x *= (1 - damping);
+    //node.velocity.y *= (1 - damping);
+    /* SEMI-IMPLICIT EULER INTEGRATION
+    for (auto& pair : nodes) {
+        Node& node = pair.second;
+        node.velocity.x += node.accel.x * deltaTime;
+        node.velocity.y += node.accel.y * deltaTime;
+    }
+    for (auto& pair : nodes) {
+        Node& node = pair.second;
+        node.position.x += node.velocity.x * deltaTime;
+        node.position.y += node.velocity.y * deltaTime;
+    }
+    */
+
+    // VERLET INTEGRATION
+
+    for (auto& pair : nodes) {
+        Node& node = pair.second;
+        ImVec2 temp_position = node.position;
+
+        node.position.x += ((node.position.x - node.last_position.x) + node.accel.x * deltaTime * deltaTime) * (1 - damping);
+        node.position.y += ((node.position.y - node.last_position.y) + node.accel.y * deltaTime * deltaTime) * (1 - damping);
+        node.last_position = temp_position;
+    }
+
+
+}
+
 
 
 void MyApp::UpdateSIR(float deltaTime)

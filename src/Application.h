@@ -21,13 +21,14 @@ public:
     int id;
 
     ImVec2 position;
-    ImVec2 velocity;
+    ImVec2 last_position;
+    ImVec2 accel;
     float radius;
 
     NodeState state;
 
-    Node(int id, ImVec2 pos, ImVec2 vel, float r, NodeState state = S)
-        : id(id), position(pos), velocity(vel), radius(r), state(state) {
+    Node(int id, ImVec2 pos, ImVec2 accel, float r, NodeState state = S)
+        : id(id), position(pos), last_position(pos), accel(accel), radius(r), state(state) {
     }
 };
 
@@ -72,6 +73,7 @@ class MyApp {
 public:
     MyApp();
     void Render();
+    void addForces();
     void UpdatePhysics(float deltaTime);
     void UpdateSIR(float deltaTime);
 
@@ -89,12 +91,12 @@ public:
             links.emplace(nodeA, nodeB);
         }
     }
-    int addNode(ImVec2 pos, ImVec2 vel = ImVec2(0, 0), float r = 20.0f, NodeState state = S) {
+    int addNode(ImVec2 pos, ImVec2 accel = ImVec2(0,0), float r = 20.0f, NodeState state = S) {
         int id = nodes.size();
         while (nodes.find(id) != nodes.end()) {
             id++;
         }
-        nodes.emplace(id, Node(id, pos, vel, r, state));
+        nodes.emplace(id, Node(id, pos, accel, r, state));
         return id;
     }
     void removeLink(int nodeA, int nodeB) {
