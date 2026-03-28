@@ -16,7 +16,7 @@ ImVec4 MyApp::setNodeColor(int node, int hoveredNodeId) {
     if (node == hoveredNodeId)
         return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    switch (simulation.state[node]) {
+    switch (simulation.getNodeState(node)) {
     case S:
         return ImVec4(0.0f, 0.0f, 1.0f, 1.0f);
     case I:
@@ -42,9 +42,7 @@ void MyApp::run() {
 
     // Calculate time
     float deltaTime = ImGui::GetIO().DeltaTime;
-    if (deltaTime > 0.04f) {
-        deltaTime = 0.04f;
-    }
+    if (deltaTime > 0.04f) deltaTime = 0.04f;
 
     // ImGui dockspace setup
 
@@ -52,10 +50,14 @@ void MyApp::run() {
     ImGui::DockSpaceOverViewport(0, viewport);
 
     // Run simulations
-    simulation.UpdatePhysics(1.0 / 75);
-    simulation.UpdatePhysics(1.0/75);
-    if (isSimulationPlaying) {
-        simulation.UpdateSIR(1.0/75);
+    
+    deltaTimeAccumulator += deltaTime;
+    while(deltaTimeAccumulator >= 1.0/75) {
+        simulation.UpdatePhysics(1.0 / 75);
+        if (isSimulationPlaying) {
+            simulation.UpdateSIR(1.0 / 75);
+        }
+        deltaTimeAccumulator -= 1.0 / 75;
     }
 
     // Draw the UI panels and buttons
@@ -79,37 +81,41 @@ void MyApp::run() {
 }
 
 void MyApp::render()
-{
+{   
+    auto& position = simulation.getNodePositions();
+	auto& radius = simulation.getNodeRadius();
+    auto& links = simulation.getLinks();
+
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     // Draw links and nodes
-    for (const auto& link : simulation.links) {
+    for (const auto& link : links) {
 
-        ImVec2 screenPosA = worldToScreenTransform(simulation.position[link.nodeA], canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        ImVec2 screenPosB = worldToScreenTransform(simulation.position[link.nodeB], canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPosA = worldToScreenTransform(position[link.nodeA], canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPosB = worldToScreenTransform(position[link.nodeB], canvas_p0, worldSpaceZoom, worldSpaceOffset);
 
         ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
         if (iState.hoveredLink == link) color = ImVec4(1.0, 0.0, 0.0, 1.0);
         draw_list->AddLine(screenPosA, screenPosB, ImGui::GetColorU32(color), 4.0f * worldSpaceZoom);
     }
-    for (int node = 0; node < simulation.position.size(); node++){
-        ImVec2 screenPos = worldToScreenTransform(simulation.position[node], canvas_p0, worldSpaceZoom, worldSpaceOffset);
+    for (int node = 0; node < position.size(); node++){
+        ImVec2 screenPos = worldToScreenTransform(position[node], canvas_p0, worldSpaceZoom, worldSpaceOffset);
 
         ImVec4 color = setNodeColor(node, iState.hoveredNodeId);
-        draw_list->AddCircleFilled(screenPos, simulation.radius[node] * worldSpaceZoom, ImGui::GetColorU32(color));
+        draw_list->AddCircleFilled(screenPos, radius[node] * worldSpaceZoom, ImGui::GetColorU32(color));
 
     }
 
     // DRAW THE LINE BEING DRAGGED FROM NODE TO MOUSE
     if (iState.draggedNodeId != -1) {
-        auto draggedPosition = simulation.position[iState.draggedNodeId];
+        auto draggedPosition = position[iState.draggedNodeId];
         auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         ImVec2 mousePos = worldToScreenTransform(iState.worldMousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
     }
 
     char textInfo[64];
-    sprintf(textInfo, "Nodes: %i\nLinks: %i", (int)simulation.position.size(), (int)simulation.links.size());
+    sprintf(textInfo, "Nodes: %i\nLinks: %i", (int)position.size(), (int)links.size());
     ImGui::Text(textInfo);
 }
 
@@ -153,12 +159,12 @@ void MyApp::HandleInput(){
             // if we are in infection mode, left clicking on a node infects it and right clicking on a node makes it susceptible
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 if (iState.hoveredNodeId != -1) {
-                    simulation.state[iState.hoveredNodeId] = I;
+                    simulation.SetNodeState(iState.hoveredNodeId, I);
                 }
             }
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 if (iState.hoveredNodeId != -1) {
-                    simulation.state[iState.hoveredNodeId] = S;
+                    simulation.SetNodeState(iState.hoveredNodeId, S);
                 }
             }
         }
@@ -285,9 +291,7 @@ void MyApp::ParameterWindowUI(){
     ImGui::RadioButton("Infect nodes", &isInfectionMode, 1);
 
     if (ImGui::Button("Recover all nodes", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        for (int node = 0; node < simulation.state.size(); node++) {
-            simulation.state[node] = S;
-        }
+        simulation.RecoverAll();
     }
 
     drawInfectedPlot();
@@ -309,8 +313,8 @@ void MyApp::drawInfectedPlot() const{
     while (refresh_time < ImGui::GetTime() && isSimulationPlaying) // Create data at fixed 60 Hz rate for the demo
     {
         float infectedCount = 0;
-        for( int node = 0; node < simulation.state.size(); node++){
-            if (simulation.state[node] == I) infectedCount += 1;
+        for( int node = 0; node < simulation.getN(); node++){
+            if (simulation.getNodeState(node) == I) infectedCount += 1;
         }
 
         values[values_offset] = infectedCount;

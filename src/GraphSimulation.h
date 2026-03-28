@@ -161,15 +161,33 @@ public:
         links.clear();
     }
 
-    // Node data
-    std::vector<Vec2> position;
-    std::vector<Vec2> last_position;
-    std::vector<Vec2> accel;
-    std::vector<float> radius;
-    std::vector<NodeState> state;
+    void RecoverAll(){
+        for (int node = 0; node < state.size(); node++){
+	        state[node] = S;
+        }
+    }
 
-    //std::unordered_map<int, Node> nodes;
-    std::unordered_set<Link> links;
+    int getN() const {
+        return position.size();
+	}
+
+    NodeState getNodeState(int nodeId) const {
+        return state[nodeId];
+	}
+
+    void SetNodeState(int nodeId, NodeState newState) {
+        state[nodeId] = newState;
+	}
+
+    const std::vector<Vec2>& getNodePositions() const{
+        return position;
+	}
+    const std::vector<float>& getNodeRadius() const{
+        return radius;
+    }
+    const std::unordered_set<Link>& getLinks() const{
+		return links;
+    }
 
 public:
     // Physics constants
@@ -179,16 +197,25 @@ public:
     float damping = 0.95f;
     float centralGravity = 1000.0f;
 
-
     // SIR dynamics
+    int epidemicType = 0; // 0 -> SIR, 1 -> SIS
+    float lambdaInfection = 0.6f; // Infection rate
+    float muRecovery = 0.2f; // Recovery rate
+
+
+
+private:
 
     // random number generator shared between all functions
     pcg64 rng{ pcg_extras::seed_seq_from<std::random_device>{} };
 
+    // Node data
+    std::vector<Vec2> position;
+    std::vector<Vec2> last_position;
+    std::vector<Vec2> accel;
+    std::vector<float> radius;
+    std::vector<NodeState> state;
 
-    int epidemicType = 0; // 0 -> SIR, 1 -> SIS
-
-    float lambdaInfection = 0.6f; // Infection rate
-    float muRecovery = 0.2f; // Recovery rate
-
+    //std::unordered_map<int, Node> nodes;
+    std::unordered_set<Link> links;
 };

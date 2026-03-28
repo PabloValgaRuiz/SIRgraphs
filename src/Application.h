@@ -37,6 +37,7 @@ private:
     GraphSimulation simulation{};
     InteractionState iState{};
     bool isSimulationPlaying = false;
+	float deltaTimeAccumulator = 0.0f;
 
     
     
