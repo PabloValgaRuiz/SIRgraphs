@@ -1,8 +1,6 @@
 #include "Application.h"
-
+#include "GraphSimulation.h"
 #include <random>
-
-
 
 
 MyApp::MyApp()
@@ -10,49 +8,7 @@ MyApp::MyApp()
     ImGui::GetIO().FontGlobalScale = 1.3f;
 }
 
-// see if the mouse is over a node
-int MyApp::GetHoveredNodeId(Vec2 localMousePos) {
-    for (const auto& pair : nodes) {
-        const Node& node = pair.second;
 
-        float dx = node.position.x - localMousePos.x;
-        float dy = node.position.y - localMousePos.y;
-        float distanceSquared = (dx * dx) + (dy * dy);
-
-        if (distanceSquared <= (node.radius * node.radius)) {
-            return node.id;
-        }
-    }
-    return -1; // -1 means no node was hovered
-}
-
-Link MyApp::GetHoveredLink(Vec2 localMousePos)
-{
-    // get rectangle from the link and see if the mouse is in it
-    for (const auto& link : links) {
-
-        float width = 6.0f;
-
-        Vec2 positionA = nodes.at(link.nodeA).position;
-        Vec2 positionB = nodes.at(link.nodeB).position;
-
-        ImVec2 vectorAB = ImVec2(positionB.x - positionA.x, positionB.y - positionA.y);
-        ImVec2 vectorAC = ImVec2(localMousePos.x - positionA.x, localMousePos.y - positionA.y);
-
-        // USE PROJECTIONS TO SEE IF THE MOUSE IS ON THE SEGMENT:
-        //CHECK: AB_ort dot AC < 2 * 2 (proof below, also don't need to check >0 cause the width goes both ways)
-        float distanceAB2 = vectorAB.x * vectorAB.x + vectorAB.y * vectorAB.y;
-        float projectionABortAC2 = vectorAB.y * vectorAC.x - vectorAB.x * vectorAC.y;
-        if (projectionABortAC2 * projectionABortAC2 < width * width * distanceAB2) {
-
-            // CHECK: 0 < AB dot AC < AB dot AB (proof: 0 < Proj < LenAB, where Proj = ABunit dot AC -> lenAB * Proj = AB dot AC)
-            if (vectorAB.x * vectorAC.x + vectorAB.y * vectorAC.y > 0 && vectorAB.x * vectorAC.x + vectorAB.y * vectorAC.y < distanceAB2) {
-                return link;
-            }
-        }
-    }
-    return Link{};
-}
 
 static ImVec4 setNodeColor(const Node& node, int hoveredNodeId) {
 
@@ -79,18 +35,20 @@ static Vec2 screenToWorldTransform(ImVec2 screenCoord, Vec2 canvas_p0 = Vec2{ 0,
                  (screenCoord.y - canvas_p0.y - offset.y) / zoom };
 }
 // links
-void MyApp::Render() {
+
+
+void MyApp::run() {
 
 
     float deltaTime = ImGui::GetIO().DeltaTime;
     if (deltaTime > 0.04f) {
         deltaTime = 0.04f;
     }
-    UpdatePhysics(deltaTime);
-    UpdatePhysics(deltaTime);
+
+    simulation.UpdatePhysics(2.0/75);
 
     if (isSimulationPlaying) {
-        UpdateSIR(deltaTime);
+        simulation.UpdateSIR(1.0/75);
     }
 
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -102,18 +60,63 @@ void MyApp::Render() {
 
     viewportSize = Vec2{ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y};
     worldSpaceOffset = Vec2{viewportSize.x / 2, viewportSize.y / 2};
-
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
     // get coordinates of the top-left corner of the window to know the absolute coordinates to draw
-    Vec2 canvas_p0 = {  ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y    };
+    canvas_p0 = {  ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y    };
+
+
 
     // GET MOUSE POSITION AND SET HOVERING STATE
     ImVec2 mousePos = ImGui::GetMousePos();
-    Vec2 worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-    int hoveredNodeId = -1;
-    Link hoveredLink{};
+    iState.worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
 
+
+    HandleInput();
+    
+    render();
+
+    char textInfo[64];
+    sprintf(textInfo, "Fps: %f\nNodes: %i\nLinks: %i", 1.0/deltaTime, (int)simulation.nodes.size(), (int)simulation.links.size());
+    ImGui::Text(textInfo);
+
+    ImGui::End();
+
+    //ImGui::ShowDemoWindow();
+}
+
+void MyApp::render()
+{
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    // Draw links and nodes
+    for (const auto& link : simulation.links) {
+        const Node& nodeA = simulation.nodes.at(link.nodeA);
+        const Node& nodeB = simulation.nodes.at(link.nodeB);
+
+        ImVec2 screenPosA = worldToScreenTransform(nodeA.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPosB = worldToScreenTransform(nodeB.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+
+        ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
+        if (iState.hoveredLink == link) color = ImVec4(1.0, 0.0, 0.0, 1.0);
+        draw_list->AddLine(screenPosA, screenPosB, ImGui::GetColorU32(color), 4.0f * worldSpaceZoom);
+    }
+    for (const auto& node : simulation.nodes) {
+        ImVec2 screenPos = worldToScreenTransform(node.second.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+
+        ImVec4 color = setNodeColor(node.second, iState.hoveredNodeId);
+        draw_list->AddCircleFilled(screenPos, node.second.radius * worldSpaceZoom, ImGui::GetColorU32(color));
+
+    }
+
+    // DRAW THE LINE BEING DRAGGED FROM NODE TO MOUSE
+    if (iState.draggedNodeId != -1) {
+        auto draggedPosition = simulation.nodes.at(iState.draggedNodeId).position;
+        auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 mousePos = worldToScreenTransform(iState.worldMousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
+    }
+}
+
+void MyApp::HandleInput(){
     if (ImGui::IsWindowHovered()) {
 
         // ZOOM
@@ -125,108 +128,65 @@ void MyApp::Render() {
             if (worldSpaceZoom < 0.1f) worldSpaceZoom = 0.1f; // Cap zoom
         }
 
-        hoveredNodeId = GetHoveredNodeId(worldMousePos);
-        hoveredLink = GetHoveredLink(worldMousePos);
+        iState.hoveredNodeId = simulation.GetHoveredNodeId(iState.worldMousePos);
+        iState.hoveredLink = simulation.GetHoveredLink(iState.worldMousePos);
 
         if (isInfectionMode == 1) {
             // if we are in infection mode, left clicking on a node infects it and right clicking on a node makes it susceptible
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                if (hoveredNodeId != -1) {
-                    nodes.at(hoveredNodeId).state = I;
+                if (iState.hoveredNodeId != -1) {
+                    simulation.nodes.at(iState.hoveredNodeId).state = I;
                 }
             }
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                if (hoveredNodeId != -1) {
-                    nodes.at(hoveredNodeId).state = S;
+                if (iState.hoveredNodeId != -1) {
+                    simulation.nodes.at(iState.hoveredNodeId).state = S;
                 }
             }
         }
         else if (isInfectionMode == 0) {
             // delete a node where you right click if there is a node there
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-                if (hoveredNodeId != -1) {
-                    removeNode(hoveredNodeId);
+                if (iState.hoveredNodeId != -1) {
+                    simulation.removeNode(iState.hoveredNodeId);
                 }
-                else if (hoveredLink.nodeA != -1) {
-                    removeLink(hoveredLink.nodeA, hoveredLink.nodeB);
+                else if (iState.hoveredLink.nodeA != -1) {
+                    simulation.removeLink(iState.hoveredLink.nodeA, iState.hoveredLink.nodeB);
                 }
             }
 
             // LEFT CLICK PRESSED
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 // add a link between two nodes when left clicking and dragging from one node to another
-                if (hoveredNodeId != -1) {
-                    draggedNodeId = hoveredNodeId;
+                if (iState.hoveredNodeId != -1) {
+                    iState.draggedNodeId = iState.hoveredNodeId;
                 }
                 // add a node where you left click and there isn't already a node there
                 else {
-                    addNode(Vec2{ worldMousePos.x, worldMousePos.y });
+                    simulation.addNode(Vec2{ iState.worldMousePos.x, iState.worldMousePos.y });
                 }
             }
             // LEFT CLICK RELEASED
             if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
                 // if we were dragging from a node and we release over another node, add a link between them
-                if (draggedNodeId != -1 && hoveredNodeId != -1)
-                    if (draggedNodeId != hoveredNodeId)
-                        addLink(draggedNodeId, hoveredNodeId);
-                draggedNodeId = -1;
+                if (iState.draggedNodeId != -1 && iState.hoveredNodeId != -1)
+                    if (iState.draggedNodeId != iState.hoveredNodeId)
+                        simulation.addLink(iState.draggedNodeId, iState.hoveredNodeId);
+                iState.draggedNodeId = -1;
 
             }
         }
     }
 
-    // Draw links and nodes
-    for (const auto& link : links) {
-        const Node& nodeA = nodes.at(link.nodeA);
-        const Node& nodeB = nodes.at(link.nodeB);
-
-        ImVec2 screenPosA = worldToScreenTransform(nodeA.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        ImVec2 screenPosB = worldToScreenTransform(nodeB.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-
-        ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
-        if (hoveredLink == link) color = ImVec4(1.0, 0.0, 0.0, 1.0);
-        draw_list->AddLine(screenPosA, screenPosB, ImGui::GetColorU32(color), 4.0f * worldSpaceZoom);
-    }
-    for (const auto& node : nodes) {
-        ImVec2 screenPos = worldToScreenTransform(node.second.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-
-        ImVec4 color = setNodeColor(node.second, hoveredNodeId);
-        draw_list->AddCircleFilled(screenPos, node.second.radius * worldSpaceZoom, ImGui::GetColorU32(color));
-
-    }
-    // DRAW THE LINE BEING DRAGGED FROM NODE TO MOUSE
-    if (draggedNodeId != -1) {
-        auto draggedPosition = nodes.at(draggedNodeId).position;
-        auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
-
-        ////PHYSICS: PUSH THE NODE TOWARDS THE MOUSE
-        //ImVec2 draggingVec = ImVec2(worldMousePos.x - draggedPosition.x, worldMousePos.y - draggedPosition.y);
-        //float draggingDist = sqrt(draggingVec.x * draggingVec.x + draggingVec.y * draggingVec.y);
-        //ImVec2 normalizedDraggingVec = ImVec2(draggingVec.x / draggingDist, draggingVec.y / draggingDist);
-        //if (draggingDist > springLength) {
-        //nodes.at(draggedNodeId).accel.x += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.x;
-        //nodes.at(draggedNodeId).accel.y += springStiffness * (draggingDist - springLength) * normalizedDraggingVec.y;
-        //}
-    }
-
-    //ImGui::SetCursorPosY();
-    char textInfo[64];
-    sprintf(textInfo, "Fps: %f\nNodes: %i\nLinks: %i", 1.0/deltaTime, (int)nodes.size(), (int)links.size());
-    ImGui::Text(textInfo);
-
-    ImGui::End();
 
     ImGui::Begin("Parameters window");
-
-
     ImGui::PushItemWidth(100.0f);
 
     static int numNodesER = 20;
     static float pER = 0.05f;
 
     if (ImGui::Button("Create Erdos-Renyi graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        createRandomGraph(numNodesER, pER, viewportSize.x, viewportSize.y);
+        simulation.createRandomGraph(numNodesER, pER, viewportSize.x, viewportSize.y);
     }
     ImGui::DragInt("Number of nodes (ER)", &numNodesER, 0.25f, 1, 100);
     ImGui::DragFloat("Edge probability (ER)", &pER, 0.0025f, 0.0f, 1.0f, "%.2f");
@@ -235,7 +195,7 @@ void MyApp::Render() {
     static int k = 1;
 
     if (ImGui::Button("Create Barabasi-Albert graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        createBarabasiAlbertGraph(numNodesBA, k, viewportSize.x, viewportSize.y);
+        simulation.createBarabasiAlbertGraph(numNodesBA, k, viewportSize.x, viewportSize.y);
     }
     ImGui::DragInt("Number of nodes (BA)", &numNodesBA, 0.125f, 1, 100);
     ImGui::DragInt("Links per node (BA)", &k, 0.05f, 1, 10);
@@ -243,24 +203,24 @@ void MyApp::Render() {
     ImGui::PopItemWidth();
 
     if (ImGui::Button("Add Erdos-Renyi node", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        addNodeErdosRenyi(pER);
+        simulation.addNodeErdosRenyi(pER);
     }
     if (ImGui::Button("Add Barabasi-Albert node", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        addNodeBarabasiAlbert(k);
+        simulation.addNodeBarabasiAlbert(k);
     }
 
     if (ImGui::Button("Delete graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        nodes.clear();
-        links.clear();
+        simulation.nodes.clear();
+        simulation.links.clear();
     }
 
     ImGui::PushItemWidth(100.0f);
 
-    ImGui::DragFloat("Repulsion force", &repulsionForce, 10000.0f, 10000.0f, 20000000.0f, "%.0f");
-    ImGui::DragFloat("Spring Length", &springLength, 0.5f, 5.0f, 500.0f, "%.0f");
-    ImGui::DragFloat("Spring Stiffness", &springStiffness, 1.0f, 25.0f, 2500.0f, "%.0f");
-    ImGui::DragFloat("Damping", &damping, 0.001f, 0.5f, 1.0f, "%.2f");
-    ImGui::DragFloat("Central gravity", &centralGravity, 2.0f, 1.0f, 3000.0f, "%.0f");
+    ImGui::DragFloat("Repulsion force", &simulation.repulsionForce, 10000.0f, 10000.0f, 20000000.0f, "%.0f");
+    ImGui::DragFloat("Spring Length", &simulation.springLength, 0.5f, 5.0f, 500.0f, "%.0f");
+    ImGui::DragFloat("Spring Stiffness", &simulation.springStiffness, 1.0f, 25.0f, 2500.0f, "%.0f");
+    ImGui::DragFloat("Damping", &simulation.damping, 0.001f, 0.5f, 1.0f, "%.2f");
+    ImGui::DragFloat("Central gravity", &simulation.centralGravity, 2.0f, 1.0f, 3000.0f, "%.0f");
 
     ImGui::PopItemWidth();
 
@@ -277,12 +237,12 @@ void MyApp::Render() {
         ImGui::PopStyleColor();
     }
 
-    ImGui::RadioButton("SIR", &epidemicType, 0); ImGui::SameLine();
-    ImGui::RadioButton("SIS", &epidemicType, 1);
+    ImGui::RadioButton("SIR", &simulation.epidemicType, 0); ImGui::SameLine();
+    ImGui::RadioButton("SIS", &simulation.epidemicType, 1);
 
     ImGui::PushItemWidth(100.0f);
-    ImGui::DragFloat("Infection rate", &lambdaInfection, 0.01f, 0.0f, 1.0f, "%.2f");
-    ImGui::DragFloat("Recovery rate", &muRecovery, 0.01f, 0.0f, 1.0f, "%.2f");
+    ImGui::DragFloat("Infection rate", &simulation.lambdaInfection, 0.01f, 0.0f, 1.0f, "%.2f");
+    ImGui::DragFloat("Recovery rate", &simulation.muRecovery, 0.01f, 0.0f, 1.0f, "%.2f");
     ImGui::PopItemWidth();
 
     // Switch between creating network and infecting nodes
@@ -290,17 +250,20 @@ void MyApp::Render() {
     ImGui::RadioButton("Infect nodes", &isInfectionMode, 1);
 
     if (ImGui::Button("Recover all nodes", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        for (auto& [key, node] : nodes) {
+        for (auto& [key, node] : simulation.nodes) {
             node.state = S;
         }
     }
 
+    drawInfectedPlot();
 
+    ImGui::End();
+}
+
+void MyApp::drawInfectedPlot() const{
     // Fill an array of contiguous float values to plot
     // Tip: If your float aren't contiguous but part of a structure, you can pass a pointer to your first float
     // and the sizeof() of your structure in the "stride" parameter.
-
-    
 
     static float values[180] = {};
     static int values_offset = 0;
@@ -311,7 +274,7 @@ void MyApp::Render() {
     while (refresh_time < ImGui::GetTime() && isSimulationPlaying) // Create data at fixed 60 Hz rate for the demo
     {
         float infectedCount = 0;
-        for (const auto& [key, node] : nodes) {
+        for (const auto& [key, node] : simulation.nodes) {
             if (node.state == I) infectedCount += 1;
         }
 
@@ -326,294 +289,6 @@ void MyApp::Render() {
     }
 
     ImGui::PushItemWidth(400.0f);
-    ImGui::PlotLines("I", values, IM_COUNTOF(values), values_offset , 0, 0.0f, maxValue * 1.2f, ImVec2(0.0f, 200.0f));
+    ImGui::PlotLines("I", values, IM_COUNTOF(values), values_offset, 0, 0.0f, maxValue * 1.2f, ImVec2(0.0f, 200.0f));
     ImGui::PopItemWidth();
-
-    ImGui::End();
-
-    //ImGui::ShowDemoWindow();
-}
-
-void MyApp::addForces() {
-
-    // node repulsion
-    for (auto& pairA : nodes) {
-        for (auto& pairB : nodes) {
-            if (pairA.first == pairB.first) continue; // Don't repel yourself
-
-            Node& nodeA = pairA.second;
-            Node& nodeB = pairB.second;
-
-            ImVec2 distanceVec = ImVec2(nodeA.position.x - nodeB.position.x, nodeA.position.y - nodeB.position.y);
-            float distanceSquared = distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y;
-            
-            if (distanceSquared > 600 * 600) continue;
-
-            float minSafeDistanceSq = 20.0f * 20.0f;
-            distanceSquared = std::max(distanceSquared, minSafeDistanceSq);
-
-            ImVec2 repulsionStrength;
-            repulsionStrength.x = repulsionForce * distanceVec.x / (distanceSquared);
-            repulsionStrength.y = repulsionForce * distanceVec.y / (distanceSquared);
-
-            nodeA.accel.x += repulsionStrength.x;
-            nodeA.accel.y += repulsionStrength.y;
-
-            nodeB.accel.x -= repulsionStrength.x;
-            nodeB.accel.y -= repulsionStrength.y;
-        }
-    }
-
-    // link attraction like springs
-    for (const auto& link : links) {
-        Node& nodeA = nodes.at(link.nodeA);
-        Node& nodeB = nodes.at(link.nodeB);
-
-        ImVec2 distanceVec = ImVec2(nodeA.position.x - nodeB.position.x, nodeA.position.y - nodeB.position.y);
-        float distance = sqrt(distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y);
-        ImVec2 normalizedDistanceVec = ImVec2(distanceVec.x / (distance + 0.01f), distanceVec.y / (distance + 0.01f));
-        ImVec2 attractionStrength;
-        attractionStrength.x = springStiffness * (springLength - distance) * normalizedDistanceVec.x;
-        attractionStrength.y = springStiffness * (springLength - distance) * normalizedDistanceVec.y;
-
-        nodeA.accel.x += attractionStrength.x;
-        nodeA.accel.y += attractionStrength.y;
-
-        nodeB.accel.x -= attractionStrength.x;
-        nodeB.accel.y -= attractionStrength.y;
-    }
-
-    for (auto& pair : nodes) {
-        Node& node = pair.second;
-
-        // Slight force towards the center of the window
-        // get center of the world space
-        ImVec2 center = ImVec2(0, 0);
-        node.accel.x += (center.x - node.position.x) * centralGravity;
-        node.accel.y += (center.y - node.position.y) * centralGravity;
-
-    }
-
-}
-
-void MyApp::UpdatePhysics(float deltaTime) {
-    if (deltaTime <= 0.0f) return;
-
-    for (auto& pair : nodes) {
-        Node& node = pair.second;
-        node.accel.x = 0;
-        node.accel.y = 0;
-    }
-    addForces();
-
-    // VERLET INTEGRATION
-
-    for (auto& pair : nodes) {
-        Node& node = pair.second;
-        Vec2 temp_position = node.position;
-
-        node.position.x += ((node.position.x - node.last_position.x) + node.accel.x * deltaTime * deltaTime) * (1 - damping);
-        node.position.y += ((node.position.y - node.last_position.y) + node.accel.y * deltaTime * deltaTime) * (1 - damping);
-        node.last_position = temp_position;
-    }
-
-
-}
-
-
-
-void MyApp::UpdateSIR(float deltaTime)
-{
-    static std::uniform_real_distribution<double> dist(0, 1);
-
-    auto newNodes = nodes;
-
-
-    // Infection
-    for (const auto& link : links) {
-        const auto& nodeA = nodes.at(link.nodeA);
-        const auto& nodeB = nodes.at(link.nodeB);
-
-        if (nodeA.state == I && nodeB.state == S) {
-            if (dist(rng) < lambdaInfection * deltaTime) {
-                newNodes.at(nodeB.id).state = I;
-            }
-        }
-        else if (nodeA.state == S && nodeB.state == I) {
-            if (dist(rng) < lambdaInfection * deltaTime) {
-                newNodes.at(nodeA.id).state = I;
-            }
-        }
-    }
-    //Recovery
-    for (const auto& [key, node] : nodes) {
-        if (node.state == I) {
-            if (dist(rng) < muRecovery * deltaTime) {
-                if(epidemicType == 0)
-                    newNodes.at(node.id).state = R;
-                else if (epidemicType == 1)
-                    newNodes.at(node.id).state = S;
-            }
-        }
-    }
-
-    nodes = newNodes;
-
-
-
-}
-
-void MyApp::createRandomGraph(int numNodes, float p, float width, float height) {
-
-    static std::uniform_real_distribution<float> position_dist(-300, 300);
-    static std::uniform_real_distribution<float> p_dist(0, 1);
-
-    nodes.clear();
-    links.clear();
-    for (int i = 0; i < numNodes; i++) {
-        addNode(Vec2{position_dist(rng), position_dist(rng)});
-    }
-    for (const auto& [id1, node_1] : nodes) {
-        for (const auto& [id2, node_2] : nodes) {
-            if (p_dist(rng) < p && id1 < id2) {
-                addLink(id1, id2);
-            }
-        }
-    }
-}
-
-void MyApp::addNodeErdosRenyi(float p) {
-    static std::uniform_real_distribution<double> p_dist(0, 1);
-    if (nodes.size() == 0) {
-        int id = addNode(Vec2{0, 0});
-        return;
-    }
-
-    int id = addNode(Vec2{0, 0});
-
-    std::vector<int> connected_nodes;
-
-    for (const auto& [key, node] : nodes) {
-        if (p_dist(rng) < p && id != key) {
-            addLink(id, key);
-            connected_nodes.push_back(key);
-        }
-    }
-
-    static std::uniform_real_distribution<float> rand_pos_shift(-50, 50);
-    // get coordinates average and place the node there
-    if (connected_nodes.size() > 0) {
-        Vec2 avg_coords{0,0};
-        for (auto key : connected_nodes) {
-            avg_coords.x += nodes.at(key).position.x;
-            avg_coords.y += nodes.at(key).position.y;
-        }
-        // shift the coordinates a bit
-
-        avg_coords = Vec2{  rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
-                            rand_pos_shift(rng) + avg_coords.y / connected_nodes.size() };
-        nodes.at(id).position = avg_coords;
-    }
-    else {
-        nodes.at(id).position = Vec2{rand_pos_shift(rng), rand_pos_shift(rng)};
-    }
-}
-
-void MyApp::addNodeBarabasiAlbert(int k) {
-
-    static std::uniform_real_distribution<float> p_dist(0, 1);
-
-    if (nodes.size() == 0) {
-        int id = addNode(Vec2{0,0});
-        return;
-    }
-
-    if (k > nodes.size()) k = nodes.size();
-
-    int id = addNode(Vec2{0,0});
-
-    std::unordered_map<int, int> degrees;
-    for (const auto& [key, node] : nodes) {
-        degrees.emplace(key, 0);
-    }
-    for (const auto& link : links) {
-        degrees.at(link.nodeA)++;
-        degrees.at(link.nodeB)++;
-    }
-
-    auto degrees_copy = degrees;
-    degrees.emplace(id, 0);
-
-    std::vector<int> connected_nodes{}; connected_nodes.reserve(k);
-    for (int m = 0; m < k; m++) {
-
-        float random_value = p_dist(rng);
-        float counter = 0;
-
-        int nLinks = 0;
-        for (auto& [j, degree] : degrees_copy) {
-            nLinks += degree;
-        }
-
-        // node to connect to
-        for (auto& [key, degree] : degrees_copy) {
-            if (id == key) continue;
-
-            if (nLinks < 2)
-                counter = 1.0;
-            else
-                counter += (float)degree / nLinks;
-
-            if (random_value < counter) {
-                if (id == key) std::cout << "ERROR " << id << std::endl;
-                addLink(id, key);
-                degrees[id]++;
-                degrees[key]++;
-
-                connected_nodes.push_back(key); // save them for coordinates
-
-                degrees_copy.erase(key);
-                break;
-            }
-        }
-    }
-    // get coordinates average and place the node there
-    Vec2 avg_coords{ 0,0 };
-    for (auto key : connected_nodes) {
-        avg_coords.x += nodes.at(key).position.x;
-        avg_coords.y += nodes.at(key).position.y;
-    }
-    // shift the coordinates a bit
-    static std::uniform_real_distribution<float> rand_pos_shift(-50, 50);
-
-    avg_coords = Vec2{rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
-        rand_pos_shift(rng) + avg_coords.y / connected_nodes.size()};
-    nodes.at(id).position = avg_coords;
-}
-
-void MyApp::createBarabasiAlbertGraph(int numNodes, int k, float width, float height) {
-
-    static std::uniform_real_distribution<float> position_dist(-300, 300);
-    static std::uniform_real_distribution<float> p_dist(0, 1);
-
-    nodes.clear();
-    links.clear();
-
-    if (k > numNodes) k = numNodes;
-
-    // keep up with degree count
-
-    for (int i = 0; i < k; i++) {
-        int id = addNode(Vec2{position_dist(rng), position_dist(rng)});
-        for (auto& [key, node] : nodes) {
-            if (id != key) {
-                addLink(id, key);
-            }
-        }
-    }
-
-
-    for (int i = k; i < numNodes; i++) {
-        addNodeBarabasiAlbert(k);
-    }
 }

@@ -21,6 +21,7 @@ set(IMGUI_SOURCES
 set(APP_SOURCES
     src/main.cpp
     src/Application.cpp
+    src/GraphSimulation.cpp
 )
 
 # build an executable with ImGui's code and the app's code
