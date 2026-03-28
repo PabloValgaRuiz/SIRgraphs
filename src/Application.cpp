@@ -11,7 +11,7 @@ MyApp::MyApp()
 }
 
 // see if the mouse is over a node
-int MyApp::GetHoveredNodeId(ImVec2 localMousePos) {
+int MyApp::GetHoveredNodeId(Vec2 localMousePos) {
     for (const auto& pair : nodes) {
         const Node& node = pair.second;
 
@@ -26,15 +26,15 @@ int MyApp::GetHoveredNodeId(ImVec2 localMousePos) {
     return -1; // -1 means no node was hovered
 }
 
-Link MyApp::GetHoveredLink(ImVec2 localMousePos)
+Link MyApp::GetHoveredLink(Vec2 localMousePos)
 {
     // get rectangle from the link and see if the mouse is in it
     for (const auto& link : links) {
 
         float width = 6.0f;
 
-        ImVec2 positionA = nodes.at(link.nodeA).position;
-        ImVec2 positionB = nodes.at(link.nodeB).position;
+        Vec2 positionA = nodes.at(link.nodeA).position;
+        Vec2 positionB = nodes.at(link.nodeB).position;
 
         ImVec2 vectorAB = ImVec2(positionB.x - positionA.x, positionB.y - positionA.y);
         ImVec2 vectorAC = ImVec2(localMousePos.x - positionA.x, localMousePos.y - positionA.y);
@@ -70,13 +70,13 @@ static ImVec4 setNodeColor(const Node& node, int hoveredNodeId) {
     return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
-static ImVec2 worldToScreenTransform(ImVec2 worldCoord, ImVec2 canvas_p0 = ImVec2(0, 0), float zoom = 1.0f, ImVec2 offset = ImVec2(0, 0)) {
+static ImVec2 worldToScreenTransform(Vec2 worldCoord, Vec2 canvas_p0 = Vec2{0,0}, float zoom = 1.0f, Vec2 offset = Vec2{0,0}) {
     return ImVec2(  (worldCoord.x * zoom) + canvas_p0.x + offset.x,
                     (worldCoord.y * zoom) + canvas_p0.y + offset.y);
 }
-static ImVec2 screenToWorldTransform(ImVec2 screenCoord, ImVec2 canvas_p0 = ImVec2(0,0), float zoom = 1.0f, ImVec2 offset = ImVec2(0,0)) {
-    return ImVec2(  (screenCoord.x - canvas_p0.x - offset.x) / zoom,
-                    (screenCoord.y - canvas_p0.y - offset.y) / zoom);
+static Vec2 screenToWorldTransform(ImVec2 screenCoord, Vec2 canvas_p0 = Vec2{ 0,0 }, float zoom = 1.0f, Vec2 offset = Vec2{ 0,0 }) {
+    return Vec2{ (screenCoord.x - canvas_p0.x - offset.x) / zoom,
+                 (screenCoord.y - canvas_p0.y - offset.y) / zoom };
 }
 // links
 void MyApp::Render() {
@@ -100,17 +100,17 @@ void MyApp::Render() {
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::Begin("Simulation Viewport", nullptr);
 
-    viewportSize = ImGui::GetContentRegionAvail();
-    worldSpaceOffset = ImVec2(viewportSize.x / 2, viewportSize.y / 2);
+    viewportSize = Vec2{ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y};
+    worldSpaceOffset = Vec2{viewportSize.x / 2, viewportSize.y / 2};
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     // get coordinates of the top-left corner of the window to know the absolute coordinates to draw
-    ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();
+    Vec2 canvas_p0 = {  ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y    };
 
     // GET MOUSE POSITION AND SET HOVERING STATE
     ImVec2 mousePos = ImGui::GetMousePos();
-    ImVec2 worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+    Vec2 worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
     int hoveredNodeId = -1;
     Link hoveredLink{};
 
@@ -160,7 +160,7 @@ void MyApp::Render() {
                 }
                 // add a node where you left click and there isn't already a node there
                 else {
-                    addNode(ImVec2(worldMousePos.x, worldMousePos.y));
+                    addNode(Vec2{ worldMousePos.x, worldMousePos.y });
                 }
             }
             // LEFT CLICK RELEASED
@@ -410,7 +410,7 @@ void MyApp::UpdatePhysics(float deltaTime) {
 
     for (auto& pair : nodes) {
         Node& node = pair.second;
-        ImVec2 temp_position = node.position;
+        Vec2 temp_position = node.position;
 
         node.position.x += ((node.position.x - node.last_position.x) + node.accel.x * deltaTime * deltaTime) * (1 - damping);
         node.position.y += ((node.position.y - node.last_position.y) + node.accel.y * deltaTime * deltaTime) * (1 - damping);
@@ -465,13 +465,13 @@ void MyApp::UpdateSIR(float deltaTime)
 
 void MyApp::createRandomGraph(int numNodes, float p, float width, float height) {
 
-    static std::uniform_real_distribution<double> position_dist(-300, 300);
-    static std::uniform_real_distribution<double> p_dist(0, 1);
+    static std::uniform_real_distribution<float> position_dist(-300, 300);
+    static std::uniform_real_distribution<float> p_dist(0, 1);
 
     nodes.clear();
     links.clear();
     for (int i = 0; i < numNodes; i++) {
-        addNode(ImVec2(position_dist(rng), position_dist(rng)));
+        addNode(Vec2{position_dist(rng), position_dist(rng)});
     }
     for (const auto& [id1, node_1] : nodes) {
         for (const auto& [id2, node_2] : nodes) {
@@ -485,11 +485,11 @@ void MyApp::createRandomGraph(int numNodes, float p, float width, float height) 
 void MyApp::addNodeErdosRenyi(float p) {
     static std::uniform_real_distribution<double> p_dist(0, 1);
     if (nodes.size() == 0) {
-        int id = addNode(ImVec2(0, 0));
+        int id = addNode(Vec2{0, 0});
         return;
     }
 
-    int id = addNode(ImVec2(0, 0));
+    int id = addNode(Vec2{0, 0});
 
     std::vector<int> connected_nodes;
 
@@ -500,38 +500,37 @@ void MyApp::addNodeErdosRenyi(float p) {
         }
     }
 
-    static std::uniform_real_distribution<double> rand_pos_shift(-50, 50);
+    static std::uniform_real_distribution<float> rand_pos_shift(-50, 50);
     // get coordinates average and place the node there
     if (connected_nodes.size() > 0) {
-        ImVec2 avg_coords(0, 0);
+        Vec2 avg_coords{0,0};
         for (auto key : connected_nodes) {
             avg_coords.x += nodes.at(key).position.x;
             avg_coords.y += nodes.at(key).position.y;
         }
         // shift the coordinates a bit
 
-        avg_coords = ImVec2(rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
-                            rand_pos_shift(rng) + avg_coords.y / connected_nodes.size());
+        avg_coords = Vec2{  rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
+                            rand_pos_shift(rng) + avg_coords.y / connected_nodes.size() };
         nodes.at(id).position = avg_coords;
     }
     else {
-        nodes.at(id).position = ImVec2(rand_pos_shift(rng), rand_pos_shift(rng));
+        nodes.at(id).position = Vec2{rand_pos_shift(rng), rand_pos_shift(rng)};
     }
 }
 
 void MyApp::addNodeBarabasiAlbert(int k) {
 
-
-    static std::uniform_real_distribution<double> p_dist(0, 1);
+    static std::uniform_real_distribution<float> p_dist(0, 1);
 
     if (nodes.size() == 0) {
-        int id = addNode(ImVec2(0, 0));
+        int id = addNode(Vec2{0,0});
         return;
     }
 
     if (k > nodes.size()) k = nodes.size();
 
-    int id = addNode(ImVec2(0, 0));
+    int id = addNode(Vec2{0,0});
 
     std::unordered_map<int, int> degrees;
     for (const auto& [key, node] : nodes) {
@@ -579,23 +578,23 @@ void MyApp::addNodeBarabasiAlbert(int k) {
         }
     }
     // get coordinates average and place the node there
-    ImVec2 avg_coords(0, 0);
+    Vec2 avg_coords{ 0,0 };
     for (auto key : connected_nodes) {
         avg_coords.x += nodes.at(key).position.x;
         avg_coords.y += nodes.at(key).position.y;
     }
     // shift the coordinates a bit
-    static std::uniform_real_distribution<double> rand_pos_shift(-50, 50);
+    static std::uniform_real_distribution<float> rand_pos_shift(-50, 50);
 
-    avg_coords = ImVec2(rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
-        rand_pos_shift(rng) + avg_coords.y / connected_nodes.size());
+    avg_coords = Vec2{rand_pos_shift(rng) + avg_coords.x / connected_nodes.size(),
+        rand_pos_shift(rng) + avg_coords.y / connected_nodes.size()};
     nodes.at(id).position = avg_coords;
 }
 
 void MyApp::createBarabasiAlbertGraph(int numNodes, int k, float width, float height) {
 
-    static std::uniform_real_distribution<double> position_dist(-300, 300);
-    static std::uniform_real_distribution<double> p_dist(0, 1);
+    static std::uniform_real_distribution<float> position_dist(-300, 300);
+    static std::uniform_real_distribution<float> p_dist(0, 1);
 
     nodes.clear();
     links.clear();
@@ -605,7 +604,7 @@ void MyApp::createBarabasiAlbertGraph(int numNodes, int k, float width, float he
     // keep up with degree count
 
     for (int i = 0; i < k; i++) {
-        int id = addNode(ImVec2(position_dist(rng), position_dist(rng)));
+        int id = addNode(Vec2{position_dist(rng), position_dist(rng)});
         for (auto& [key, node] : nodes) {
             if (id != key) {
                 addLink(id, key);

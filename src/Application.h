@@ -16,18 +16,23 @@ enum NodeState {
     R = 2
 };
 
+struct Vec2 {
+    float x;
+    float y;
+};
+
 class Node {
 public:
     int id;
 
-    ImVec2 position;
-    ImVec2 last_position;
-    ImVec2 accel;
+    Vec2 position;
+    Vec2 last_position;
+    Vec2 accel;
     float radius;
 
     NodeState state;
 
-    Node(int id, ImVec2 pos, ImVec2 accel, float r, NodeState state = S)
+    Node(int id, Vec2 pos, Vec2 accel, float r, NodeState state = S)
         : id(id), position(pos), last_position(pos), accel(accel), radius(r), state(state) {
     }
 };
@@ -91,7 +96,7 @@ public:
             links.emplace(nodeA, nodeB);
         }
     }
-    int addNode(ImVec2 pos, ImVec2 accel = ImVec2(0,0), float r = 20.0f, NodeState state = S) {
+    int addNode(Vec2 pos, Vec2 accel = Vec2{0,0}, float r = 20.0f, NodeState state = S) {
         int id = nodes.size();
         while (nodes.find(id) != nodes.end()) {
             id++;
@@ -116,13 +121,13 @@ public:
     }
 
 private:
-    int GetHoveredNodeId(ImVec2 localMousePos);
-    Link GetHoveredLink(ImVec2 localMousePos);
+    int GetHoveredNodeId(Vec2 localMousePos);
+    Link GetHoveredLink(Vec2 localMousePos);
     int draggedNodeId = -1;
 
-    ImVec2 viewportSize = ImVec2(800.0f, 600.0f);
+    Vec2 viewportSize = Vec2{800.0f, 600.0f};
     float worldSpaceZoom = 1.0f;
-    ImVec2 worldSpaceOffset = ImVec2(400.0f, 300.0f);
+    Vec2 worldSpaceOffset = Vec2{400.0f, 300.0f};
 
     std::unordered_map<int, Node> nodes;
     std::unordered_set<Link> links;
