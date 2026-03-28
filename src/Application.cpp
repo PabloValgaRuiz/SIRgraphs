@@ -6,6 +6,7 @@
 MyApp::MyApp()
 {
     ImGui::GetIO().FontGlobalScale = 1.3f;
+
 }
 
 
@@ -39,44 +40,38 @@ static Vec2 screenToWorldTransform(ImVec2 screenCoord, Vec2 canvas_p0 = Vec2{ 0,
 
 void MyApp::run() {
 
-
+    // Calculate time
     float deltaTime = ImGui::GetIO().DeltaTime;
     if (deltaTime > 0.04f) {
         deltaTime = 0.04f;
     }
 
-    simulation.UpdatePhysics(2.0/75);
+    // ImGui dockspace setup
 
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::DockSpaceOverViewport(0, viewport);
+
+    // Run simulations
+    simulation.UpdatePhysics(1.0 / 75);
+    simulation.UpdatePhysics(1.0/75);
     if (isSimulationPlaying) {
         simulation.UpdateSIR(1.0/75);
     }
 
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::DockSpaceOverViewport(0, viewport);
+    // Draw the UI panels and buttons
+    ParameterWindowUI();
 
     // create a new ImGui window called "Simulation Viewport"
     ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
     ImGui::Begin("Simulation Viewport", nullptr);
 
-    viewportSize = Vec2{ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y};
-    worldSpaceOffset = Vec2{viewportSize.x / 2, viewportSize.y / 2};
-    // get coordinates of the top-left corner of the window to know the absolute coordinates to draw
-    canvas_p0 = {  ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y    };
 
-
-
-    // GET MOUSE POSITION AND SET HOVERING STATE
-    ImVec2 mousePos = ImGui::GetMousePos();
-    iState.worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-
-
+	// Handle user input for interacting with the simulation (creating nodes and links, dragging nodes, zooming, etc.)
+    UpdateViewportCamera();
     HandleInput();
-    
-    render();
 
-    char textInfo[64];
-    sprintf(textInfo, "Fps: %f\nNodes: %i\nLinks: %i", 1.0/deltaTime, (int)simulation.position.size(), (int)simulation.links.size());
-    ImGui::Text(textInfo);
+    // Render the visuals in the simulation viewport
+    render();
 
     ImGui::End();
 
@@ -112,9 +107,34 @@ void MyApp::render()
         ImVec2 mousePos = worldToScreenTransform(iState.worldMousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
     }
+
+    char textInfo[64];
+    sprintf(textInfo, "Nodes: %i\nLinks: %i", (int)simulation.position.size(), (int)simulation.links.size());
+    ImGui::Text(textInfo);
+}
+
+void MyApp::UpdateViewportCamera() {
+    viewportSize = Vec2{ ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y };
+    
+    worldSpaceOffset = Vec2{ viewportSize.x / 2, viewportSize.y / 2 };
+    // get coordinates of the top-left corner of the window to know the absolute coordinates to draw
+    canvas_p0 = { ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y };
+
+	// if the window is hovered and we are dragging, update the world space offset to move the camera
+    if (ImGui::IsWindowHovered() && iState.draggedNodeId == -1 && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+        worldSpaceOffset.x += ImGui::GetIO().MouseDelta.x;
+        worldSpaceOffset.y += ImGui::GetIO().MouseDelta.y;
+	}
+
 }
 
 void MyApp::HandleInput(){
+
+    // GET MOUSE POSITION AND SET HOVERING STATE
+    ImVec2 mousePos = ImGui::GetMousePos();
+    iState.worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+
+
     if (ImGui::IsWindowHovered()) {
 
         // ZOOM
@@ -177,6 +197,9 @@ void MyApp::HandleInput(){
         }
     }
 
+}
+
+void MyApp::ParameterWindowUI(){
 
     ImGui::Begin("Parameters window");
     ImGui::PushItemWidth(100.0f);
@@ -204,7 +227,7 @@ void MyApp::HandleInput(){
     if (ImGui::Button("Add Erdos-Renyi node", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
         if (ImGui::GetIO().KeyShift) {
             // Shift is currently held down
-            for(int i = 0; i < 10; i++){
+            for (int i = 0; i < 10; i++) {
                 simulation.addNodeErdosRenyi(pER);
             }
         }

@@ -26,9 +26,12 @@ public:
     MyApp();
     void run();
     void render();
+    void UpdateViewportCamera();
     void HandleInput();
-    ImVec4 setNodeColor(int node, int hoveredNodeId);
+    void ParameterWindowUI();
+
 private:
+    ImVec4 setNodeColor(int node, int hoveredNodeId);
     void drawInfectedPlot() const;
 
     GraphSimulation simulation{};
