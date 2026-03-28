@@ -27,6 +27,7 @@ public:
     void run();
     void render();
     void HandleInput();
+    ImVec4 setNodeColor(int node, int hoveredNodeId);
 private:
     void drawInfectedPlot() const;
 

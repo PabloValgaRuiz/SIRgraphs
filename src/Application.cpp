@@ -10,12 +10,12 @@ MyApp::MyApp()
 
 
 
-static ImVec4 setNodeColor(const Node& node, int hoveredNodeId) {
+ImVec4 MyApp::setNodeColor(int node, int hoveredNodeId) {
 
-    if (node.id == hoveredNodeId)
+    if (node == hoveredNodeId)
         return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    switch (node.state) {
+    switch (simulation.state[node]) {
     case S:
         return ImVec4(0.0f, 0.0f, 1.0f, 1.0f);
     case I:
@@ -75,7 +75,7 @@ void MyApp::run() {
     render();
 
     char textInfo[64];
-    sprintf(textInfo, "Fps: %f\nNodes: %i\nLinks: %i", 1.0/deltaTime, (int)simulation.nodes.size(), (int)simulation.links.size());
+    sprintf(textInfo, "Fps: %f\nNodes: %i\nLinks: %i", 1.0/deltaTime, (int)simulation.position.size(), (int)simulation.links.size());
     ImGui::Text(textInfo);
 
     ImGui::End();
@@ -89,27 +89,25 @@ void MyApp::render()
 
     // Draw links and nodes
     for (const auto& link : simulation.links) {
-        const Node& nodeA = simulation.nodes.at(link.nodeA);
-        const Node& nodeB = simulation.nodes.at(link.nodeB);
 
-        ImVec2 screenPosA = worldToScreenTransform(nodeA.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        ImVec2 screenPosB = worldToScreenTransform(nodeB.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPosA = worldToScreenTransform(simulation.position[link.nodeA], canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPosB = worldToScreenTransform(simulation.position[link.nodeB], canvas_p0, worldSpaceZoom, worldSpaceOffset);
 
         ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
         if (iState.hoveredLink == link) color = ImVec4(1.0, 0.0, 0.0, 1.0);
         draw_list->AddLine(screenPosA, screenPosB, ImGui::GetColorU32(color), 4.0f * worldSpaceZoom);
     }
-    for (const auto& node : simulation.nodes) {
-        ImVec2 screenPos = worldToScreenTransform(node.second.position, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+    for (int node = 0; node < simulation.position.size(); node++){
+        ImVec2 screenPos = worldToScreenTransform(simulation.position[node], canvas_p0, worldSpaceZoom, worldSpaceOffset);
 
-        ImVec4 color = setNodeColor(node.second, iState.hoveredNodeId);
-        draw_list->AddCircleFilled(screenPos, node.second.radius * worldSpaceZoom, ImGui::GetColorU32(color));
+        ImVec4 color = setNodeColor(node, iState.hoveredNodeId);
+        draw_list->AddCircleFilled(screenPos, simulation.radius[node] * worldSpaceZoom, ImGui::GetColorU32(color));
 
     }
 
     // DRAW THE LINE BEING DRAGGED FROM NODE TO MOUSE
     if (iState.draggedNodeId != -1) {
-        auto draggedPosition = simulation.nodes.at(iState.draggedNodeId).position;
+        auto draggedPosition = simulation.position[iState.draggedNodeId];
         auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         ImVec2 mousePos = worldToScreenTransform(iState.worldMousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
@@ -135,12 +133,12 @@ void MyApp::HandleInput(){
             // if we are in infection mode, left clicking on a node infects it and right clicking on a node makes it susceptible
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 if (iState.hoveredNodeId != -1) {
-                    simulation.nodes.at(iState.hoveredNodeId).state = I;
+                    simulation.state[iState.hoveredNodeId] = I;
                 }
             }
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 if (iState.hoveredNodeId != -1) {
-                    simulation.nodes.at(iState.hoveredNodeId).state = S;
+                    simulation.state[iState.hoveredNodeId] = S;
                 }
             }
         }
@@ -149,6 +147,7 @@ void MyApp::HandleInput(){
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 if (iState.hoveredNodeId != -1) {
                     simulation.removeNode(iState.hoveredNodeId);
+                    iState.hoveredNodeId = -1;
                 }
                 else if (iState.hoveredLink.nodeA != -1) {
                     simulation.removeLink(iState.hoveredLink.nodeA, iState.hoveredLink.nodeB);
@@ -203,15 +202,28 @@ void MyApp::HandleInput(){
     ImGui::PopItemWidth();
 
     if (ImGui::Button("Add Erdos-Renyi node", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        simulation.addNodeErdosRenyi(pER);
+        if (ImGui::GetIO().KeyShift) {
+            // Shift is currently held down
+            for(int i = 0; i < 10; i++){
+                simulation.addNodeErdosRenyi(pER);
+            }
+        }
+        else
+            simulation.addNodeErdosRenyi(pER);
     }
     if (ImGui::Button("Add Barabasi-Albert node", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        simulation.addNodeBarabasiAlbert(k);
+        if (ImGui::GetIO().KeyShift) {
+            // Shift is currently held down
+            for (int i = 0; i < 10; i++) {
+                simulation.addNodeBarabasiAlbert(k);
+            }
+        }
+        else
+            simulation.addNodeBarabasiAlbert(k);
     }
 
     if (ImGui::Button("Delete graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        simulation.nodes.clear();
-        simulation.links.clear();
+        simulation.deleteGraph();
     }
 
     ImGui::PushItemWidth(100.0f);
@@ -250,8 +262,8 @@ void MyApp::HandleInput(){
     ImGui::RadioButton("Infect nodes", &isInfectionMode, 1);
 
     if (ImGui::Button("Recover all nodes", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        for (auto& [key, node] : simulation.nodes) {
-            node.state = S;
+        for (int node = 0; node < simulation.state.size(); node++) {
+            simulation.state[node] = S;
         }
     }
 
@@ -274,8 +286,8 @@ void MyApp::drawInfectedPlot() const{
     while (refresh_time < ImGui::GetTime() && isSimulationPlaying) // Create data at fixed 60 Hz rate for the demo
     {
         float infectedCount = 0;
-        for (const auto& [key, node] : simulation.nodes) {
-            if (node.state == I) infectedCount += 1;
+        for( int node = 0; node < simulation.state.size(); node++){
+            if (simulation.state[node] == I) infectedCount += 1;
         }
 
         values[values_offset] = infectedCount;

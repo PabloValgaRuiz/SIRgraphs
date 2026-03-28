@@ -82,39 +82,95 @@ public:
 
     // add node
 
-    void addLink(int nodeA, int nodeB) {
-        // Only add the link if both nodes actually exist in the map
-        if (nodes.find(nodeA) != nodes.end() && nodes.find(nodeB) != nodes.end()) {
-            links.emplace(nodeA, nodeB);
-        }
+    void addLink(int nodeA, int nodeB) {        
+        links.emplace(nodeA, nodeB);
     }
+
     int addNode(Vec2 pos, Vec2 accel = Vec2{ 0,0 }, float r = 20.0f, NodeState state = S) {
-        int id = nodes.size();
-        while (nodes.find(id) != nodes.end()) {
-            id++;
-        }
-        nodes.emplace(id, Node(id, pos, accel, r, state));
-        return id;
+  
+        this->position.push_back(pos);
+        this->last_position.push_back(pos);
+        this->accel.push_back(accel);
+        this->radius.push_back(r);
+        this->state.push_back(state);
+
+        return position.size() - 1;
+
     }
     void removeLink(int nodeA, int nodeB) {
         links.erase(Link(nodeA, nodeB));
     }
 
     void removeNode(int id) {
-        nodes.erase(id);
+
+        int last_id = position.size() - 1;
+        std::vector<Link> update_links;
+        
         for (auto it = links.begin(); it != links.end(); ) {
+            
+            // Remove every link the node has
             if (it->nodeA == id || it->nodeB == id) {
                 it = links.erase(it);
+            }
+            
+            // If it's not the last node, swap it with the last node. Every link of the last node has to change the stored id
+            else if(id != last_id){
+                if(it->nodeA == last_id){
+                    update_links.emplace_back(id, it->nodeB);
+                    it = links.erase(it);
+                }
+                else if (it->nodeB == last_id) {
+                    update_links.emplace_back(it->nodeA, id);
+                    it = links.erase(it);
+                }
+                else
+                    ++it;
             }
             else {
                 ++it;
             }
         }
+        // Add all the updated links
+        for(const auto& link : update_links){
+            links.emplace(link);
+        }
+
+        // Swap the nodes if it's not the last one
+        if (id != last_id){
+            position[id] = position[last_id];
+            last_position[id] = last_position[last_id];
+            accel[id] = accel[last_id];
+            radius[id] = radius[last_id];
+            state[id] = state[last_id];
+        }
+        // shrink the arrays
+        this->position.pop_back();
+        this->last_position.pop_back();
+        this->accel.pop_back();
+        this->radius.pop_back();
+        this->state.pop_back();
+
     }
 
+    void deleteGraph(){
+        position.clear();
+        last_position.clear();
+        accel.clear();
+        radius.clear();
+        state.clear();
+        links.clear();
+    }
 
-    std::unordered_map<int, Node> nodes;
+    // Node data
+    std::vector<Vec2> position;
+    std::vector<Vec2> last_position;
+    std::vector<Vec2> accel;
+    std::vector<float> radius;
+    std::vector<NodeState> state;
+
+    //std::unordered_map<int, Node> nodes;
     std::unordered_set<Link> links;
+
 public:
     // Physics constants
     float repulsionForce = 2000000.0f;
