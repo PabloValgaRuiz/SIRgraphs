@@ -78,7 +78,7 @@ static ImVec2 screenToWorldTransform(ImVec2 screenCoord, ImVec2 canvas_p0 = ImVe
     return ImVec2(  (screenCoord.x - canvas_p0.x - offset.x) / zoom,
                     (screenCoord.y - canvas_p0.y - offset.y) / zoom);
 }
-
+// links
 void MyApp::Render() {
 
 
@@ -86,7 +86,8 @@ void MyApp::Render() {
     if (deltaTime > 0.04f) {
         deltaTime = 0.04f;
     }
-    UpdatePhysics(deltaTime * 2);
+    UpdatePhysics(deltaTime);
+    UpdatePhysics(deltaTime);
 
     if (isSimulationPlaying) {
         UpdateSIR(deltaTime);
@@ -211,7 +212,7 @@ void MyApp::Render() {
 
     //ImGui::SetCursorPosY();
     char textInfo[64];
-    sprintf(textInfo, "Nodes: %i\nLinks: %i", (int)nodes.size(), (int)links.size());
+    sprintf(textInfo, "Fps: %f\nNodes: %i\nLinks: %i", 1.0/deltaTime, (int)nodes.size(), (int)links.size());
     ImGui::Text(textInfo);
 
     ImGui::End();
@@ -346,11 +347,14 @@ void MyApp::addForces() {
             ImVec2 distanceVec = ImVec2(nodeA.position.x - nodeB.position.x, nodeA.position.y - nodeB.position.y);
             float distanceSquared = distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y;
             
-            if (distanceSquared > 800 * 800) continue;
+            if (distanceSquared > 600 * 600) continue;
+
+            float minSafeDistanceSq = 20.0f * 20.0f;
+            distanceSquared = std::max(distanceSquared, minSafeDistanceSq);
 
             ImVec2 repulsionStrength;
-            repulsionStrength.x = repulsionForce * distanceVec.x / (distanceSquared + 0.01f);
-            repulsionStrength.y = repulsionForce * distanceVec.y / (distanceSquared + 0.01f);
+            repulsionStrength.x = repulsionForce * distanceVec.x / (distanceSquared);
+            repulsionStrength.y = repulsionForce * distanceVec.y / (distanceSquared);
 
             nodeA.accel.x += repulsionStrength.x;
             nodeA.accel.y += repulsionStrength.y;
@@ -379,7 +383,6 @@ void MyApp::addForces() {
         nodeB.accel.y -= attractionStrength.y;
     }
 
-    // update positions based on velocity and apply damping
     for (auto& pair : nodes) {
         Node& node = pair.second;
 
@@ -402,22 +405,6 @@ void MyApp::UpdatePhysics(float deltaTime) {
         node.accel.y = 0;
     }
     addForces();
-
-    // damping
-    //node.velocity.x *= (1 - damping);
-    //node.velocity.y *= (1 - damping);
-    /* SEMI-IMPLICIT EULER INTEGRATION
-    for (auto& pair : nodes) {
-        Node& node = pair.second;
-        node.velocity.x += node.accel.x * deltaTime;
-        node.velocity.y += node.accel.y * deltaTime;
-    }
-    for (auto& pair : nodes) {
-        Node& node = pair.second;
-        node.position.x += node.velocity.x * deltaTime;
-        node.position.y += node.velocity.y * deltaTime;
-    }
-    */
 
     // VERLET INTEGRATION
 
