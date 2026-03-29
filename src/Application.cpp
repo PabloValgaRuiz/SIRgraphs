@@ -49,16 +49,7 @@ void MyApp::run() {
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::DockSpaceOverViewport(0, viewport);
 
-    // Run simulations
     
-    deltaTimeAccumulator += deltaTime;
-    while(deltaTimeAccumulator >= 1.0/75) {
-        simulation.UpdatePhysics(1.0 / 75);
-        if (isSimulationPlaying) {
-            simulation.UpdateSIR(1.0 / 75);
-        }
-        deltaTimeAccumulator -= 1.0 / 75;
-    }
 
     // Draw the UI panels and buttons
     ParameterWindowUI();
@@ -72,8 +63,21 @@ void MyApp::run() {
     UpdateViewportCamera();
     HandleInput();
 
+
+    // Run simulations
+    deltaTimeAccumulator += deltaTime;
+    while (deltaTimeAccumulator >= 1.0 / 75) {
+        simulation.UpdatePhysics(1.0 / 75);
+        if (isSimulationPlaying) {
+            simulation.UpdateSIR(1.0 / 75);
+        }
+        deltaTimeAccumulator -= 1.0 / 75;
+    }
+
+
     // Render the visuals in the simulation viewport
     render();
+
 
     ImGui::End();
 
@@ -81,7 +85,7 @@ void MyApp::run() {
 }
 
 void MyApp::render()
-{   
+{
     auto& position = simulation.getNodePositions();
 	auto& radius = simulation.getNodeRadius();
     auto& links = simulation.getLinks();

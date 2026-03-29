@@ -86,8 +86,7 @@ void GraphSimulation::UpdateSIR(float deltaTime)
 {
     static std::uniform_real_distribution<double> dist(0, 1);
 
-    auto newState = state;
-
+    newState = state;
 
     // Infection
     for (const auto& link : links) {
@@ -116,7 +115,7 @@ void GraphSimulation::UpdateSIR(float deltaTime)
             }
         }
     }
-    state = newState;
+    std::swap(state, newState);
 }
 
 void GraphSimulation::createRandomGraph(int numNodes, float p, float width, float height) {

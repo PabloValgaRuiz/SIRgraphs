@@ -215,7 +215,7 @@ private:
     std::vector<Vec2> accel;
     std::vector<float> radius;
     std::vector<NodeState> state;
+    std::vector<NodeState> newState;
 
-    //std::unordered_map<int, Node> nodes;
     std::unordered_set<Link> links;
 };
