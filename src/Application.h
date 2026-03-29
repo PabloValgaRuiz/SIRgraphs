@@ -5,6 +5,7 @@
 #include "imgui_impl_opengl3.h"
 
 #include "GraphSimulation.h"
+#include "Renderer.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -13,13 +14,7 @@
 #include "pcg_random.hpp"
 
 
-struct InteractionState {
-    Vec2 worldMousePos{};
 
-    int hoveredNodeId = -1;
-    int draggedNodeId = -1;
-    Link hoveredLink{};
-};
 
 class MyApp {
 public:
@@ -34,6 +29,11 @@ private:
     ImVec4 setNodeColor(int node, int hoveredNodeId);
     void drawInfectedPlot() const;
 
+
+    // RENDERING
+    Renderer renderer;
+
+    // SIMULATION
     GraphSimulation simulation{};
     InteractionState iState{};
     bool isSimulationPlaying = false;

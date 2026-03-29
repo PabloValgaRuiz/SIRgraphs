@@ -76,8 +76,21 @@ void MyApp::run() {
 
 
     // Render the visuals in the simulation viewport
-    render();
+    //render();
 
+    ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+    renderer.Resize((int)viewportPanelSize.x, (int)viewportPanelSize.y);
+	
+    renderer.Render(simulation, iState, worldSpaceZoom, worldSpaceOffset);
+
+    uint32_t textureID = renderer.getTextureID();
+
+    ImGui::Image(
+        (ImTextureID)(intptr_t)textureID,
+        ImVec2(viewportPanelSize.x, viewportPanelSize.y),
+        ImVec2(0, 1), // Top-left UV
+        ImVec2(1, 0)  // Bottom-right UV
+    );
 
     ImGui::End();
 

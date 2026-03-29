@@ -18,20 +18,29 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
+set(GLAD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad)
+
+set (GLAD_SOURCES
+    ${GLAD_DIR}/src/glad.c
+)
+
 set(APP_SOURCES
     src/main.cpp
     src/Application.cpp
     src/GraphSimulation.cpp
+    src/Renderer.cpp
 )
 
 # build an executable with ImGui's code and the app's code
-add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES})
+add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES} ${GLAD_SOURCES})
 
 
 target_include_directories(SIRgraphs PRIVATE
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    ${GLAD_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/pcg
+    ${CMAKE_CURRENT_SOURCE_DIR}/
 )
 
 

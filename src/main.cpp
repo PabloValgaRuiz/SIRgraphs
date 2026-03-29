@@ -8,6 +8,8 @@
 // - Introduction, links and more at the top of imgui.cpp
 
 #include "Application.h"
+#include <glad/glad.h>
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -123,6 +125,11 @@ int main(int, char**)
     bool show_demo_window = false;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    // Initialize GLAD to load OpenGL function pointers
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+    }
 
     MyApp myApp;
 

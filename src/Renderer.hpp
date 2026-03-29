@@ -1,0 +1,28 @@
+#pragma once
+// Renderer using openGL to render to texture and then display that texture in the ImGui window
+
+#include "GraphSimulation.h"
+
+
+class Renderer{
+public:
+	Renderer();
+	//void Resize(int width, int height);
+	void Render(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset);
+
+	void Resize(int width, int height);
+	unsigned int getTextureID() const { return textureColorbuffer; }
+
+	~Renderer();
+private:
+
+	// vertex buffer object, vertex array object, shader program
+	unsigned int VBO, VAO;
+	unsigned int shaderProgram;
+
+	// variables for off-screen rendering
+	unsigned int FBO = 0;
+	unsigned int textureColorbuffer = 0;
+	int viewportWidth = 800;
+	int viewportHeight = 600;
+};

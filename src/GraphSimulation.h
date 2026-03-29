@@ -6,6 +6,11 @@
 #include <random>
 #include "pcg_random.hpp"
 
+struct Vec2 {
+    float x;
+    float y;
+};
+
 
 enum NodeState {
     S = 0,
@@ -13,10 +18,6 @@ enum NodeState {
     R = 2
 };
 
-struct Vec2 {
-    float x;
-    float y;
-};
 
 class Node {
 public:
@@ -64,6 +65,14 @@ namespace std {
         }
     };
 }
+
+struct InteractionState {
+    Vec2 worldMousePos{};
+
+    int hoveredNodeId = -1;
+    int draggedNodeId = -1;
+    Link hoveredLink{};
+};
 
 
 class GraphSimulation{
