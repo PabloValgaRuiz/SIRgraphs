@@ -7,8 +7,8 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
 // - Introduction, links and more at the top of imgui.cpp
 
-#include "Application.h"
 #include <glad/glad.h>
+#include "Application.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
