@@ -3,9 +3,9 @@ name: Build Cross-Platform
 # Trigger this script every time code is pushed to the 'main' branch
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "dev" ]
 
 jobs:
   # ==========================================
