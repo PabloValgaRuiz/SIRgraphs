@@ -4,6 +4,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include "2DUtils.h"
+
 #include "GraphSimulation.h"
 #include "Renderer.hpp"
 
@@ -29,6 +31,9 @@ private:
     ImVec4 setNodeColor(int node, int hoveredNodeId);
     void drawInfectedPlot() const;
 
+    // Camera coordinates
+    Camera2D camera;
+    int numberOfFrames{};
 
     // RENDERING
     Renderer renderer;
@@ -38,14 +43,6 @@ private:
     InteractionState iState{};
     bool isSimulationPlaying = false;
 	float deltaTimeAccumulator = 0.0f;
-
-    
-    
-    Vec2 canvas_p0{};
-    Vec2 viewportSize = Vec2{800.0f, 600.0f};
-    float worldSpaceZoom = 1.0f;
-    Vec2 worldSpaceOffset = Vec2{400.0f, 300.0f};
-
 
     // Switch between creating network and infecting nodes
     int isInfectionMode = 0;
