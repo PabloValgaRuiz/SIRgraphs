@@ -76,6 +76,14 @@ void Renderer::Render(const GraphSimulation& simulation, const InteractionState&
 		renderLinks(simulation, iState, zoom, offset);
 		renderNodes(simulation, iState, zoom, offset);
 
+		// 2. RESOLVE: Copy from Multisample FBO to the Screen (Default FBO)
+		// This "flattens" the 4 samples per pixel into 1 smooth pixel
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, FBO);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // 0 is the screen
+		glBlitFramebuffer(	0, 0, viewportWidth, viewportHeight,
+							0, 0, viewportWidth, viewportHeight,
+							GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		GLenum err = glGetError(); if (err != GL_NO_ERROR) std::cout << "GL Error: " << err << std::endl;
 	// UNBIND THE FBO (Return to drawing to the screen)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -99,26 +107,36 @@ void Renderer::Resize(int width, int height)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
-	// If a texture already exists, delete it before creating a new one
-	if (textureColorbuffer != 0) {
-		glDeleteTextures(1, &textureColorbuffer);
-	}
+		// If a texture already exists, delete it before creating a new one
+		if (textureColorbuffer != 0) {
+			glDeleteTextures(1, &textureColorbuffer);
+		}
 
-	// 1. Generate the texture
-	glGenTextures(1, &textureColorbuffer);
-	glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
+		// generate the texture
+		glGenTextures(1, &textureColorbuffer);
 
-	// 2. Create an empty texture with the new width and height
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		// without antialiasing: GL_TEXTURE_2D
+		// with antialiasing: GL_TEXTURE_2D_MULTISAMPLE
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, textureColorbuffer);
 
-	// 3. Attach it to the FBO
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
+			// create an empty texture with the new width and height
+			
+			
+			// With antialiasing: glTexImage2DMultisample
+			glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA8, width, height, GL_TRUE);
+			
+			// Without antialiasing:
+			// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+			//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			//glTexParameteri(GL_TEXTURE_2D_MULTISAMPLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+			// attach it to the FBO
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, textureColorbuffer, 0);
 
+			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+				std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+
+		glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0);
 	// Unbind the FBO so we don't accidentally draw to it elsewhere
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
