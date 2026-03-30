@@ -288,9 +288,10 @@ int GraphSimulation::GetHoveredNodeId(Vec2 localMousePos) {
 Link GraphSimulation::GetHoveredLink(Vec2 localMousePos)
 {
     // get rectangle from the link and see if the mouse is in it
+
+    float width = 4.0f;// (*2/2); //half the width each side, but also twice so it's easier to click (since the line is thin)
     for (const auto& link : links) {
 
-        float width = 4.0f;
 
         Vec2 positionA = position[link.nodeA];
         Vec2 positionB = position[link.nodeB];

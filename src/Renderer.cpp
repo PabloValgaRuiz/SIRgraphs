@@ -56,10 +56,10 @@ Renderer::Renderer()
 }
 
 
-void Renderer::Render(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset)
+void Renderer::Render(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
-	passBufferLinks(simulation, iState, zoom, offset);
-	passBufferNodes(simulation, iState, zoom, offset);
+	passBufferLinks(simulation, iState, camera);
+	passBufferNodes(simulation, iState, camera);
 
 
 	// BIND THE FBO (Intercept the draw calls)
@@ -73,8 +73,8 @@ void Renderer::Render(const GraphSimulation& simulation, const InteractionState&
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Dark teal background
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		renderLinks(simulation, iState, zoom, offset);
-		renderNodes(simulation, iState, zoom, offset);
+		renderLinks(simulation, iState, camera);
+		renderNodes(simulation, iState, camera);
 
 	// UNBIND THE FBO (Return to drawing to the screen)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -134,6 +134,7 @@ void Renderer::initializeNodes()
     
     uniform vec2 uViewportSize;
     uniform vec2 uOffset;
+    uniform vec2 uDisplacement;
     uniform float uZoom;
     uniform float uNodeSize;
 
@@ -142,7 +143,8 @@ void Renderer::initializeNodes()
     void main()
     {
         // Convert world position to screen pixels
-        vec2 screenPos = (aPos * uZoom) + uOffset;
+        vec2 screenPos = (aPos  + uDisplacement) * uZoom + uOffset;
+
         
         // Convert screen pixels to NDC [-1.0, 1.0]
         vec2 ndcPos = (screenPos / uViewportSize) * 2.0 - 1.0;
@@ -228,7 +230,7 @@ void Renderer::initializeNodes()
 	glBindVertexArray(0);
 }
 
-void Renderer::passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset)
+void Renderer::passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
 	// Create the array of nodes positions and colors to send to the GPU
 	std::vector<float> vertices; vertices.resize(simulation.getN() * 5); // 5 floats per vertex (2position + 3color)
@@ -263,7 +265,7 @@ void Renderer::passBufferNodes(const GraphSimulation& simulation, const Interact
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Renderer::renderNodes(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset)
+void Renderer::renderNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
 	// Draw the triangle
 	glUseProgram(nodeShaderProgram);
@@ -271,8 +273,9 @@ void Renderer::renderNodes(const GraphSimulation& simulation, const InteractionS
 	// Send uniforms to the shader
 
 	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uViewportSize"), (float)viewportWidth, (float)viewportHeight);
-	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uOffset"), offset.x, offset.y);
-	glUniform1f(glGetUniformLocation(nodeShaderProgram, "uZoom"), zoom);
+	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uOffset"), camera.offset.x, camera.offset.y);
+	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uDisplacement"), camera.displacement.x, camera.displacement.y);
+	glUniform1f(glGetUniformLocation(nodeShaderProgram, "uZoom"), camera.zoom);
 	glUniform1f(glGetUniformLocation(nodeShaderProgram, "uNodeSize"), 20.0f);
 
 	glBindVertexArray(nodeVAO); // Bind the VAO containing our triangle configuration
@@ -290,6 +293,7 @@ void Renderer::initializeLinks()
     
     uniform vec2 uViewportSize;
     uniform vec2 uOffset;
+	uniform vec2 uDisplacement;
     uniform float uZoom;
 
     out vec3 ourColor;
@@ -297,7 +301,7 @@ void Renderer::initializeLinks()
     void main()
     {
         // Convert world position to screen pixels
-        vec2 screenPos = (aPos * uZoom) + uOffset;
+        vec2 screenPos = (aPos  + uDisplacement) * uZoom + uOffset;
         
         // Convert screen pixels to NDC [-1.0, 1.0]
         vec2 ndcPos = (screenPos / uViewportSize) * 2.0 - 1.0;
@@ -424,7 +428,7 @@ void pushLinktoVertices(std::vector<float>* vertices, Vec2 worldPosA, Vec2 world
 	vertices->push_back(b);
 }
 
-void Renderer::passBufferLinks(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset)
+void Renderer::passBufferLinks(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
 	// 30 floats per link (2 triangles) * (3 vertices) * (2position + 3color)
 	// all the links AND THE ONE TO THE MOUSE
@@ -459,7 +463,7 @@ void Renderer::passBufferLinks(const GraphSimulation& simulation, const Interact
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void Renderer::renderLinks(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset)
+void Renderer::renderLinks(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
 	// Draw the triangle
 	glUseProgram(linkShaderProgram);
@@ -467,8 +471,9 @@ void Renderer::renderLinks(const GraphSimulation& simulation, const InteractionS
 	// Send uniforms to the shader
 
 	glUniform2f(glGetUniformLocation(linkShaderProgram, "uViewportSize"), (float)viewportWidth, (float)viewportHeight);
-	glUniform2f(glGetUniformLocation(linkShaderProgram, "uOffset"), offset.x, offset.y);
-	glUniform1f(glGetUniformLocation(linkShaderProgram, "uZoom"), zoom);
+	glUniform2f(glGetUniformLocation(linkShaderProgram, "uOffset"), camera.offset.x, camera.offset.y);
+	glUniform2f(glGetUniformLocation(linkShaderProgram, "uDisplacement"), camera.displacement.x, camera.displacement.y);
+	glUniform1f(glGetUniformLocation(linkShaderProgram, "uZoom"), camera.zoom);
 
 	glBindVertexArray(linkVAO); // Bind the VAO containing our triangle configuration
 		int nLinkstoDraw = simulation.getLinks().size();

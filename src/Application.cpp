@@ -27,14 +27,6 @@ ImVec4 MyApp::setNodeColor(int node, int hoveredNodeId) {
     return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
-static ImVec2 worldToScreenTransform(Vec2 worldCoord, Vec2 canvas_p0 = Vec2{0,0}, float zoom = 1.0f, Vec2 offset = Vec2{0,0}) {
-    return ImVec2(  (worldCoord.x * zoom) + canvas_p0.x + offset.x,
-                    (worldCoord.y * zoom) + canvas_p0.y + offset.y);
-}
-static Vec2 screenToWorldTransform(ImVec2 screenCoord, Vec2 canvas_p0 = Vec2{ 0,0 }, float zoom = 1.0f, Vec2 offset = Vec2{ 0,0 }) {
-    return Vec2{ (screenCoord.x - canvas_p0.x - offset.x) / zoom,
-                 (screenCoord.y - canvas_p0.y - offset.y) / zoom };
-}
 // links
 
 
@@ -55,7 +47,7 @@ void MyApp::run() {
     ParameterWindowUI();
 
     // create a new ImGui window called "Simulation Viewport"
-    ImGui::SetNextWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(800, 800), ImGuiCond_FirstUseEver);
     ImGui::Begin("Simulation Viewport", nullptr);
 
 
@@ -77,20 +69,29 @@ void MyApp::run() {
 
     // Render the visuals in the simulation viewport
     //render();
-
-    ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-    renderer.Resize((int)viewportPanelSize.x, (int)viewportPanelSize.y);
-	
-    renderer.Render(simulation, iState, worldSpaceZoom, worldSpaceOffset);
+    
+    renderer.Resize((int)camera.viewportSize.x, (int)camera.viewportSize.y);
+    renderer.Render(simulation, iState, camera);
 
     uint32_t textureID = renderer.getTextureID();
-
     ImGui::Image(
         (ImTextureID)(intptr_t)textureID,
-        ImVec2(viewportPanelSize.x, viewportPanelSize.y),
+        ImVec2(camera.viewportSize.x, camera.viewportSize.y),
         ImVec2(0, 1), // Top-left UV
         ImVec2(1, 0)  // Bottom-right UV
     );
+	// set the cursor position to the top-left corner of the window to draw text there
+	ImGui::SetCursorPos(ImVec2(10, 30));
+    // display text info on top
+    char textInfo[128];
+    snprintf(textInfo, sizeof(textInfo),
+        "Nodes: %i\nLinks: %i\nwidth: %i\nheight: %i\noffsetx: %i\noffsety: %i\ndisplacementx: %i\ndisplacementy: %i\nzoom: %f\n",
+        (int)simulation.getN(), (int)simulation.getLinks().size(),
+        (int)camera.viewportSize.x, (int)camera.viewportSize.y,
+        (int)camera.offset.x, (int)camera.offset.y,
+        (int)camera.displacement.x, (int)camera.displacement.y,
+        camera.zoom);
+    ImGui::Text(textInfo);
 
     ImGui::End();
 
@@ -108,46 +109,55 @@ void MyApp::render()
     // Draw links and nodes
     for (const auto& link : links) {
 
-        ImVec2 screenPosA = worldToScreenTransform(position[link.nodeA], canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        ImVec2 screenPosB = worldToScreenTransform(position[link.nodeB], canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPosA = camera.WorldToScreen(position[link.nodeA]);
+        ImVec2 screenPosB = camera.WorldToScreen(position[link.nodeB]);
 
         ImVec4 color = ImVec4(1.0, 1.0, 1.0, 1.0);
         if (iState.hoveredLink == link) color = ImVec4(1.0, 0.0, 0.0, 1.0);
-        draw_list->AddLine(screenPosA, screenPosB, ImGui::GetColorU32(color), 4.0f * worldSpaceZoom);
+        draw_list->AddLine(screenPosA, screenPosB, ImGui::GetColorU32(color), 4.0f * camera.zoom);
     }
     for (int node = 0; node < position.size(); node++){
-        ImVec2 screenPos = worldToScreenTransform(position[node], canvas_p0, worldSpaceZoom, worldSpaceOffset);
+        ImVec2 screenPos = camera.WorldToScreen(position[node]);
 
         ImVec4 color = setNodeColor(node, iState.hoveredNodeId);
-        draw_list->AddCircleFilled(screenPos, radius[node] * worldSpaceZoom, ImGui::GetColorU32(color));
+        draw_list->AddCircleFilled(screenPos, radius[node] * camera.zoom, ImGui::GetColorU32(color));
 
     }
 
     // DRAW THE LINE BEING DRAGGED FROM NODE TO MOUSE
     if (iState.draggedNodeId != -1) {
         auto draggedPosition = position[iState.draggedNodeId];
-        auto screenDraggedPosition = worldToScreenTransform(draggedPosition, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        ImVec2 mousePos = worldToScreenTransform(iState.worldMousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
-        draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * worldSpaceZoom);
+        auto screenDraggedPosition = camera.WorldToScreen(draggedPosition);
+        ImVec2 mousePos = camera.WorldToScreen(iState.worldMousePos);
+        draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * camera.zoom);
     }
 
-    char textInfo[64];
-    sprintf(textInfo, "Nodes: %i\nLinks: %i", (int)position.size(), (int)links.size());
-    ImGui::Text(textInfo);
 }
 
 void MyApp::UpdateViewportCamera() {
-    viewportSize = Vec2{ ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y };
+    camera.viewportSize = Vec2{ ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y };
     
-    worldSpaceOffset = Vec2{ viewportSize.x / 2, viewportSize.y / 2 };
     // get coordinates of the top-left corner of the window to know the absolute coordinates to draw
-    canvas_p0 = { ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y };
+    camera.canvas_p0 = { ImGui::GetCursorScreenPos().x, ImGui::GetCursorScreenPos().y };
+    camera.offset = Vec2{ camera.viewportSize.x / 2 , camera.viewportSize.y / 2 };
 
 	// if the window is hovered and we are dragging, update the world space offset to move the camera
-    if (ImGui::IsWindowHovered() && iState.draggedNodeId == -1 && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
-        worldSpaceOffset.x += ImGui::GetIO().MouseDelta.x;
-        worldSpaceOffset.y += ImGui::GetIO().MouseDelta.y;
-	}
+    
+    if(ImGui::IsWindowHovered()){
+        // PANNING
+        if (iState.draggedNodeId == -1 && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+            camera.displacement.x += ImGui::GetIO().MouseDelta.x / camera.zoom;
+            camera.displacement.y += ImGui::GetIO().MouseDelta.y / camera.zoom;
+	    }
+
+        // ZOOM
+        float wheel = ImGui::GetIO().MouseWheel;
+        if (wheel != 0.0f) {
+            // Optional: Zoom towards mouse position
+            camera.zoom *= (1 + wheel * 0.15f);
+            if (camera.zoom < 0.1f) camera.zoom = 0.1f; // Cap zoom
+        }
+    }
 
 }
 
@@ -155,19 +165,10 @@ void MyApp::HandleInput(){
 
     // GET MOUSE POSITION AND SET HOVERING STATE
     ImVec2 mousePos = ImGui::GetMousePos();
-    iState.worldMousePos = screenToWorldTransform(mousePos, canvas_p0, worldSpaceZoom, worldSpaceOffset);
+    iState.worldMousePos = camera.ScreenToWorld(mousePos);
 
 
     if (ImGui::IsWindowHovered()) {
-
-        // ZOOM
-
-        float wheel = ImGui::GetIO().MouseWheel;
-        if (wheel != 0.0f) {
-            // Optional: Zoom towards mouse position
-            worldSpaceZoom += wheel * 0.1f;
-            if (worldSpaceZoom < 0.1f) worldSpaceZoom = 0.1f; // Cap zoom
-        }
 
         iState.hoveredNodeId = simulation.GetHoveredNodeId(iState.worldMousePos);
         iState.hoveredLink = simulation.GetHoveredLink(iState.worldMousePos);
@@ -231,7 +232,7 @@ void MyApp::ParameterWindowUI(){
     static float pER = 0.05f;
 
     if (ImGui::Button("Create Erdos-Renyi graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        simulation.createRandomGraph(numNodesER, pER, viewportSize.x, viewportSize.y);
+        simulation.createRandomGraph(numNodesER, pER, camera.viewportSize.x, camera.viewportSize.y);
     }
     ImGui::DragInt("Number of nodes (ER)", &numNodesER, 0.25f, 1, 100);
     ImGui::DragFloat("Edge probability (ER)", &pER, 0.0025f, 0.0f, 1.0f, "%.2f");
@@ -240,7 +241,7 @@ void MyApp::ParameterWindowUI(){
     static int k = 1;
 
     if (ImGui::Button("Create Barabasi-Albert graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        simulation.createBarabasiAlbertGraph(numNodesBA, k, viewportSize.x, viewportSize.y);
+        simulation.createBarabasiAlbertGraph(numNodesBA, k, camera.viewportSize.x, camera.viewportSize.y);
     }
     ImGui::DragInt("Number of nodes (BA)", &numNodesBA, 0.125f, 1, 100);
     ImGui::DragInt("Links per node (BA)", &k, 0.05f, 1, 10);
