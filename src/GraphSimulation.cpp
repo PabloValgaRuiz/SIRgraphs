@@ -290,7 +290,7 @@ Link GraphSimulation::GetHoveredLink(Vec2 localMousePos)
     // get rectangle from the link and see if the mouse is in it
     for (const auto& link : links) {
 
-        float width = 6.0f;
+        float width = 4.0f;
 
         Vec2 positionA = position[link.nodeA];
         Vec2 positionB = position[link.nodeB];

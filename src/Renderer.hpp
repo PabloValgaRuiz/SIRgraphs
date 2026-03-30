@@ -17,8 +17,17 @@ public:
 private:
 
 	// vertex buffer object, vertex array object, shader program
-	unsigned int VBO, VAO;
-	unsigned int shaderProgram;
+	unsigned int nodeVBO, nodeVAO;
+	unsigned int nodeShaderProgram;
+	void initializeNodes();
+	void passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset);
+	void renderNodes(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset);
+
+	unsigned int linkVBO, linkVAO;
+	unsigned int linkShaderProgram;
+	void initializeLinks();
+	void passBufferLinks(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset);
+	void renderLinks(const GraphSimulation& simulation, const InteractionState& iState, float zoom, Vec2 offset);
 
 	// variables for off-screen rendering
 	unsigned int FBO = 0;

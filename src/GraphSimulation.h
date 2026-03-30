@@ -9,6 +9,22 @@
 struct Vec2 {
     float x;
     float y;
+
+    Vec2 operator+(const Vec2& vector) {
+        return Vec2{ x + vector.x, y + vector.y };
+    }
+    Vec2 operator-(const Vec2& vector) {
+        return Vec2{ x - vector.x, y - vector.y };
+    }
+    float operator*(const Vec2& vector) {
+        return x * vector.x + y * vector.y;
+    }
+    Vec2 operator*(float k) {
+        return Vec2{ x * k, y * k };
+    }
+    Vec2 operator/(float k) {
+        return Vec2{ x / k, y / k };
+    }
 };
 
 
