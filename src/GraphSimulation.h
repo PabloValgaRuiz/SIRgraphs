@@ -99,7 +99,7 @@ public:
         this->radius.push_back(r);
         this->state.push_back(state);
 
-        return position.size() - 1;
+        return (int)position.size() - 1;
 
     }
     void removeLink(int nodeA, int nodeB) {
@@ -108,7 +108,7 @@ public:
 
     void removeNode(int id) {
 
-        int last_id = position.size() - 1;
+        int last_id = (int)position.size() - 1;
         std::vector<Link> update_links;
         
         for (auto it = links.begin(); it != links.end(); ) {
@@ -172,7 +172,7 @@ public:
         }
     }
 
-    int getN() const {
+    size_t getN() const {
         return position.size();
 	}
 

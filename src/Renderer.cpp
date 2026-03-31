@@ -279,7 +279,7 @@ void Renderer::renderNodes(const GraphSimulation& simulation, const InteractionS
 	glUniform1f(glGetUniformLocation(nodeShaderProgram, "uNodeSize"), 20.0f);
 
 	glBindVertexArray(nodeVAO); // Bind the VAO containing our triangle configuration
-	glDrawArrays(GL_POINTS, 0, simulation.getN()); // represents the number of vertices to draw
+	glDrawArrays(GL_POINTS, 0, (int)simulation.getN()); // represents the number of vertices to draw
 	glBindVertexArray(0);
 }
 
@@ -476,7 +476,7 @@ void Renderer::renderLinks(const GraphSimulation& simulation, const InteractionS
 	glUniform1f(glGetUniformLocation(linkShaderProgram, "uZoom"), camera.zoom);
 
 	glBindVertexArray(linkVAO); // Bind the VAO containing our triangle configuration
-		int nLinkstoDraw = simulation.getLinks().size();
+		int nLinkstoDraw = (int)simulation.getLinks().size();
 		if (iState.draggedNodeId != -1)
 			nLinkstoDraw += 1;
 		glDrawArrays(GL_TRIANGLES, 0, nLinkstoDraw * 6); // represents the number of vertices to draw (6 per link)
