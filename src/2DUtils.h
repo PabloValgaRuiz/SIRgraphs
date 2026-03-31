@@ -36,7 +36,7 @@ struct Camera2D {
     Vec2 ScreenToWorld(ImVec2 screenCoord) const {
         return Vec2{
             ((screenCoord.x - canvas_p0.x - offset.x) / zoom) - displacement.x ,
-            ((screenCoord.y - canvas_p0.y - offset.y) / zoom) - displacement.y 
+            ((screenCoord.y - canvas_p0.y - offset.y) / zoom) - displacement.y
         };
     }
 
@@ -44,8 +44,7 @@ struct Camera2D {
     ImVec2 WorldToScreen(Vec2 worldCoord) const {
         return ImVec2(
             (worldCoord.x + displacement.x) * zoom + canvas_p0.x + offset.x,
-            (worldCoord.y * displacement.y) * zoom + canvas_p0.y + offset.y
-
+            (worldCoord.y + displacement.y) * zoom + canvas_p0.y + offset.y
         );
     }
 

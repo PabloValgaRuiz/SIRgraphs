@@ -59,11 +59,11 @@ void MyApp::run() {
     // Run simulations
     deltaTimeAccumulator += deltaTime;
     while (deltaTimeAccumulator >= 1.0 / 75) {
-        simulation.UpdatePhysics(1.0 / 75);
+        simulation.UpdatePhysics(1.0f / 75);
         if (isSimulationPlaying) {
-            simulation.UpdateSIR(1.0 / 75);
+            simulation.UpdateSIR(1.0f / 75);
         }
-        deltaTimeAccumulator -= 1.0 / 75;
+        deltaTimeAccumulator -= 1.0f / 75;
     }
 
 
@@ -80,19 +80,27 @@ void MyApp::run() {
         ImVec2(0, 1), // Top-left UV
         ImVec2(1, 0)  // Bottom-right UV
     );
+
+    // DEBUG ---------------------------------------------
 	// set the cursor position to the top-left corner of the window to draw text there
 	ImGui::SetCursorPos(ImVec2(10, 30));
     // display text info on top
-    char textInfo[128];
-    snprintf(textInfo, sizeof(textInfo),
-        "Nodes: %i\nLinks: %i\nwidth: %i\nheight: %i\noffsetx: %i\noffsety: %i\ndisplacementx: %i\ndisplacementy: %i\nzoom: %f\n",
-        (int)simulation.getN(), (int)simulation.getLinks().size(),
+    char textInfo[32];
+    snprintf(textInfo, sizeof(textInfo), "Nodes: %i\nLinks: %i", (int)simulation.getN(), (int)simulation.getLinks().size());
+    ImGui::Text(textInfo);
+
+#ifndef NDEBUG
+    char debugInfo[256];
+    snprintf(debugInfo, sizeof(debugInfo),
+        "width: %i\nheight: %i\noffsetx: %i\noffsety: %i\ndisplacementx: %i\ndisplacementy: %i\nzoom: %f\n\n\nW_mouse_x: %f\nW_mouse_y: %f\nS_mouse_y: %f\nS_mouse_y: %f",
         (int)camera.viewportSize.x, (int)camera.viewportSize.y,
         (int)camera.offset.x, (int)camera.offset.y,
         (int)camera.displacement.x, (int)camera.displacement.y,
-        camera.zoom);
-    ImGui::Text(textInfo);
-
+        camera.zoom, iState.worldMousePos.x, iState.worldMousePos.y,
+        camera.WorldToScreen(iState.worldMousePos).x, camera.WorldToScreen(iState.worldMousePos).y);
+    ImGui::Text(debugInfo);
+#endif
+    // ---------------------------------------------
     ImGui::End();
 
     //ImGui::ShowDemoWindow();

@@ -183,7 +183,7 @@ void GraphSimulation::addNodeBarabasiAlbert(int k) {
         return;
     }
 
-    if (k > position.size()) k = position.size();
+    if (k > position.size()) k = (int)position.size();
 
     int id = addNode(Vec2{ 0,0 });
 
