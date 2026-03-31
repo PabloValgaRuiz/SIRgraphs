@@ -41,6 +41,7 @@ private:
     // SIMULATION
     GraphSimulation simulation{};
     InteractionState iState{};
+	bool isPhysicsPlaying = true;
     bool isSimulationPlaying = false;
 	float deltaTimeAccumulator = 0.0f;
 

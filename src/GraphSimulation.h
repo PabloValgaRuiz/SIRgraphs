@@ -79,6 +79,7 @@ public:
 
     void addNodeErdosRenyi(float p);
     void addNodeBarabasiAlbert(int k);
+	void createGridGraph(int numNodesX, int numNodesY, float width, float height);
     void createRandomGraph(int numNodes, float p, float width, float height);
     void createBarabasiAlbertGraph(int numNodes, int k, float width, float height);
 
