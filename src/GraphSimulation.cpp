@@ -244,6 +244,25 @@ void GraphSimulation::addNodeBarabasiAlbert(int k) {
     position[id] = avg_coords;
 }
 
+void GraphSimulation::createGridGraph(int numNodesX, int numNodesY, float width, float height)
+{
+    deleteGraph();
+    Vec2 gridSize = Vec2{ 100.0f * numNodesX, 100.0f * numNodesY };
+	std::vector<int> nodeIds; nodeIds.reserve(numNodesX * numNodesY);
+    for(size_t i = 0; i < numNodesX; i++){
+        for(size_t j = 0; j < numNodesY; j++){
+			nodeIds.push_back(addNode(Vec2{ (i - numNodesX / 2.0f) * gridSize.x / numNodesX, (j - numNodesY / 2.0f) * gridSize.y / numNodesY }));
+            if(i > 0){
+	            addLink(nodeIds[(i - 1) * numNodesY + j], nodeIds[i * numNodesY + j]);
+            }
+            if(j > 0){
+                addLink(nodeIds[i * numNodesY + j - 1], nodeIds[i * numNodesY + j]);
+            }
+        }
+    }
+}
+
+
 void GraphSimulation::createBarabasiAlbertGraph(int numNodes, int k, float width, float height) {
 
     static std::uniform_real_distribution<float> position_dist(-300, 300);

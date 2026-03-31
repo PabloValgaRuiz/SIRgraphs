@@ -59,7 +59,9 @@ void MyApp::run() {
     // Run simulations
     deltaTimeAccumulator += deltaTime;
     while (deltaTimeAccumulator >= 1.0 / 75) {
-        simulation.UpdatePhysics(1.0f / 75);
+		if (isPhysicsPlaying) {
+            simulation.UpdatePhysics(1.0f / 75);
+        }
         if (isSimulationPlaying) {
             simulation.UpdateSIR(1.0f / 75);
         }
@@ -236,6 +238,14 @@ void MyApp::ParameterWindowUI(){
     ImGui::Begin("Parameters window");
     ImGui::PushItemWidth(100.0f);
 
+    static int numNodesRGx = 5;
+	static int numNodesRGy = 5;
+    if (ImGui::Button("Create regular graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+        simulation.createGridGraph(numNodesRGx, numNodesRGy, camera.viewportSize.x, camera.viewportSize.y);
+    }
+    ImGui::DragInt("Width (RG)", &numNodesRGx, 0.1f, 1, 20);
+    ImGui::DragInt("Height (RG)", &numNodesRGy, 0.1f, 1, 20);
+
     static int numNodesER = 20;
     static float pER = 0.05f;
 
@@ -291,14 +301,30 @@ void MyApp::ParameterWindowUI(){
 
     ImGui::PopItemWidth();
 
+    if (!isPhysicsPlaying) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.7f, 0.1f, 1.0f));
+        if (ImGui::Button("PLAY PHYSICS", ImVec2(ImGui::GetContentRegionAvail().x, 20)))
+            isPhysicsPlaying = true;
+        ImGui::PopStyleColor();
+    }
+    else {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.6f, 0.0f, 1.0f));
+        if (ImGui::Button("PAUSE PHYSICS", ImVec2(ImGui::GetContentRegionAvail().x, 20)))
+            isPhysicsPlaying = false;
+        ImGui::PopStyleColor();
+    }
+
+    // leave some space
+	ImGui::Dummy(ImVec2(0, 10));
+
     if (!isSimulationPlaying) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.9f, 0.1f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.1f, 0.7f, 0.1f, 1.0f));
         if (ImGui::Button("PLAY SIMULATION", ImVec2(ImGui::GetContentRegionAvail().x, 40)))
             isSimulationPlaying = true;
         ImGui::PopStyleColor();
     }
     else {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.6f, 0.0f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.6f, 0.0f, 1.0f));
         if (ImGui::Button("PAUSE SIMULATION", ImVec2(ImGui::GetContentRegionAvail().x, 40)))
             isSimulationPlaying = false;
         ImGui::PopStyleColor();
