@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+
 void CheckShaderError(unsigned int shader, const std::string& type) {
 	int success;
 	char infoLog[1024];
@@ -36,9 +37,9 @@ Renderer::Renderer()
 
 	// -----------------------------------------------------------------------------------------------
 	// -------------------------ENABLE A BUNCH OF SHIT NEEDED TO WORK---------------------------------
-	glEnable(GL_PROGRAM_POINT_SIZE); // let the shaders set the point size with gl_PointSize
-	glEnable(0x8861); // Force-enable GL_POINT_SPRITE (0x8861)
-	glEnable(GL_MULTISAMPLE);// Enable antialising
+	// glEnable(GL_PROGRAM_POINT_SIZE); // let the shaders set the point size with gl_PointSize
+	// glEnable(0x8861); // Force-enable GL_POINT_SPRITE (0x8861)
+	// glEnable(GL_MULTISAMPLE);// Enable antialising
 	// Enable alpha transparency
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -131,44 +132,32 @@ void Renderer::initializeNodes()
 	const char* vertexShaderSource = R"(#version 330 core
     layout (location = 0) in vec2 aPos;
     layout (location = 1) in vec3 aColor;
-    
-    uniform vec2 uViewportSize;
-    uniform vec2 uOffset;
-    uniform vec2 uDisplacement;
-    uniform float uZoom;
-    uniform float uNodeSize;
+    layout (location = 2) in vec2 aUV;
 
+	uniform mat4 uOrthoMatrix;
+	
     out vec3 ourColor;
-    
+    out vec2 uv;
     void main()
     {
-        // Convert world position to screen pixels
-        vec2 screenPos = (aPos  + uDisplacement) * uZoom + uOffset;
-
-        
-        // Convert screen pixels to NDC [-1.0, 1.0]
-        vec2 ndcPos = (screenPos / uViewportSize) * 2.0 - 1.0;
-        ndcPos.y = -ndcPos.y; // Flip OpenGL's Y axis
-        
-        // Scale the point size based on the zoom level 
-        gl_PointSize = 2 * uNodeSize * uZoom;
-        gl_Position = vec4(ndcPos, 0.0, 1.0); // Z is 0.0, W is 1.0
-        
+		// ORTHOGRAPHIC PROJECTION
+		gl_Position = uOrthoMatrix * vec4(aPos, 0.0, 1.0);
+        uv = aUV;
         ourColor = aColor;
     })";
 
 	const char* fragmentShaderSource = R"(#version 330 core
     in vec3 ourColor;
+	in vec2 uv;
     out vec4 FragColor;
     void main()
     {
-        vec2 circCoord = gl_PointCoord - vec2(0.5, 0.5);// coordinates from center
-		float dist = length(circCoord);					// distance from center
+        vec2 circCoord = uv - vec2(0.5, 0.5);// coordinates from center
+		float dist = length(circCoord);		 // distance from center
+        if(dist > 0.5) discard;
 		
 		float pixelThickness = fwidth(dist); // how big the pixel is compared to the square (depends on zoom)
-		float alpha = 1.0 - smoothstep(1 - 2*pixelThickness, 1.0, 2*dist);
-		
-        if(length(circCoord) > 0.5) discard;
+		float alpha = 1.0 - smoothstep(0.5 - 2*pixelThickness, 0.5, dist);
 		
         
         FragColor = vec4(ourColor, alpha);
@@ -219,49 +208,59 @@ void Renderer::initializeNodes()
 			// stride: how big in bytes are ALL THE ATTRIBUTES of each vertex added.
 			// pointer: how many bytes into the buffer to find the attribute (e.g. if the second attribute comes after a vec3, pointer would be 3 * sizeof(float))
 
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, pos));
 			glEnableVertexAttribArray(0);
 
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
 			glEnableVertexAttribArray(1);
 
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+			glEnableVertexAttribArray(2);
 		// Unbind the VBO and VAO safely
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
 
+static void pushCircle(std::vector<Vertex>* vertices, Vec2 center, float radius, RGB color){
+	Vertex v1{ Vec2{center.x - radius, center.y - radius}, color, Vec2{0,0} }; // bottom left
+	Vertex v2{ Vec2{center.x + radius, center.y - radius}, color, Vec2{1,0} }; // bottom right
+	Vertex v3{ Vec2{center.x - radius, center.y + radius}, color, Vec2{0,1} }; // top left
+	Vertex v4{ Vec2{center.x + radius, center.y + radius}, color, Vec2{1,1} }; // top right
+
+	vertices->push_back(v1);
+	vertices->push_back(v2);
+	vertices->push_back(v3);
+
+	vertices->push_back(v2);
+	vertices->push_back(v3);
+	vertices->push_back(v4);
+}
+
 void Renderer::passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
-	// Create the array of nodes positions and colors to send to the GPU
-	std::vector<float> vertices; vertices.resize(simulation.getN() * 5); // 5 floats per vertex (2position + 3color)
-	// 1 vertex per node, draw them as GL_POINTS
+	// 6 vertices per node
+	std::vector<Vertex> vertices; vertices.reserve(simulation.getN() * 6);
+
 	for (int node = 0; node < simulation.getN(); node++) {
 		Vec2 worldPos = simulation.getNodePositions()[node];
 
-		vertices[node * 5 + 0] = worldPos.x;
-		vertices[node * 5 + 1] = worldPos.y;
-
 		// Set color based on node state
-		float r = 1.0f, g = 1.0f, b = 1.0f; //  white
+		RGB color = { 1.0f, 1.0f, 1.0f }; //  white
 		switch (simulation.getNodeState(node)) {
-		case S: r = 0.0f; g = 0.0f; b = 1.0f; break; // blue
-		case I: r = 1.0f; g = 0.0f; b = 0.0f; break; // red
-		case R: r = 0.0f; g = 1.0f; b = 0.0f; break; // green
+		case S: color = { 0.0f, 0.0f, 1.0f }; break; // blue
+		case I: color = { 1.0f, 0.0f, 0.0f }; break; // red
+		case R: color = { 0.0f, 1.0f, 0.0f }; break; // green
 		}
 		if (iState.hoveredNodeId == node) {
-			r = 1.0f; g = 1.0f; b = 1.0f; // white
+			color = { 1.0f, 1.0f, 1.0f }; // white
 		}
-
-		vertices[node * 5 + 2] = r;
-		vertices[node * 5 + 3] = g;
-		vertices[node * 5 + 4] = b;
+		pushCircle(&vertices, worldPos, simulation.getNodeRadius()[node], color);
 	}
-
 
 	// Copy our vertices array into a buffer for OpenGL to use
 	// No need to bind the VAO, since the VBO already knows it uses the VAO for the instructions
 	glBindBuffer(GL_ARRAY_BUFFER, nodeVBO);
-		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -271,15 +270,10 @@ void Renderer::renderNodes(const GraphSimulation& simulation, const InteractionS
 	glUseProgram(nodeShaderProgram);
 
 	// Send uniforms to the shader
-
-	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uViewportSize"), (float)viewportWidth, (float)viewportHeight);
-	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uOffset"), camera.offset.x, camera.offset.y);
-	glUniform2f(glGetUniformLocation(nodeShaderProgram, "uDisplacement"), camera.displacement.x, camera.displacement.y);
-	glUniform1f(glGetUniformLocation(nodeShaderProgram, "uZoom"), camera.zoom);
-	glUniform1f(glGetUniformLocation(nodeShaderProgram, "uNodeSize"), 20.0f);
+	glUniformMatrix4fv(glGetUniformLocation(nodeShaderProgram, "uOrthoMatrix"), 1, GL_FALSE, camera.GetOrthoMatrix().data());
 
 	glBindVertexArray(nodeVAO); // Bind the VAO containing our triangle configuration
-	glDrawArrays(GL_POINTS, 0, (int)simulation.getN()); // represents the number of vertices to draw
+	glDrawArrays(GL_TRIANGLES, 0, (int)simulation.getN() * 6); // represents the number of vertices to draw
 	glBindVertexArray(0);
 }
 
@@ -290,43 +284,39 @@ void Renderer::initializeLinks()
 	const char* vertexShaderSource = R"(#version 330 core
     layout (location = 0) in vec2 aPos;
     layout (location = 1) in vec3 aColor;
+	layout (location = 2) in vec2 aUV;
     
-    uniform vec2 uViewportSize;
-    uniform vec2 uOffset;
-	uniform vec2 uDisplacement;
+    uniform mat4 uOrthoMatrix;
     uniform float uZoom;
 
     out vec3 ourColor;
+	out vec2 uv;
     
     void main()
     {
-        // Convert world position to screen pixels
-        vec2 screenPos = (aPos  + uDisplacement) * uZoom + uOffset;
+		// ORTHOGRAPHIC PROJECTION
+		vec4 ndcPos = uOrthoMatrix * vec4(aPos, 0.0, 1.0);
         
-        // Convert screen pixels to NDC [-1.0, 1.0]
-        vec2 ndcPos = (screenPos / uViewportSize) * 2.0 - 1.0;
-        ndcPos.y = -ndcPos.y; // Flip OpenGL's Y axis
-        
-        gl_Position = vec4(ndcPos, 0.0, 1.0); // Z is 0.0, W is 1.0
-        
+        gl_Position = ndcPos; // Z is 0.0, W is 1.0
+        uv = aUV;
         ourColor = aColor;
     })";
 
 	const char* fragmentShaderSource = R"(#version 330 core
     in vec3 ourColor;
+	in vec2 uv;
     out vec4 FragColor;
     void main()
-    {
-        //   vec2 circCoord = gl_PointCoord - vec2(0.5, 0.5);// coordinates from center
-		//   float dist = length(circCoord);					// distance from center
-		//   
-		//   float pixelThickness = fwidth(dist); // how big the pixel is compared to the square (depends on zoom)
-		//   float alpha = 1.0 - smoothstep(1 - 2*pixelThickness, 1.0, 2*dist);
-		//   
-        //   if(length(circCoord) > 0.5) discard;
-		
-        
-        FragColor = vec4(ourColor, 1.0);
+    {	
+		float distx = uv.x;
+		float disty = uv.y;
+		float pixelThicknessx = fwidth(distx);
+		float pixelThicknessy = fwidth(disty);
+		float alphax = 1 - smoothstep(1 - pixelThicknessx, 1.0, uv.x);
+        float alphaxneg = smoothstep(0, pixelThicknessx, uv.x);
+		float alphay = 1 - smoothstep(1 - pixelThicknessy, 1.0, uv.y);
+		float alphayneg = smoothstep(0, pixelThicknessy, uv.y);
+		FragColor = vec4(ourColor, alphax*alphaxneg*alphay*alphayneg);
     })";
 
 	//Build and Compile our Shader Program
@@ -370,96 +360,77 @@ void Renderer::initializeLinks()
 
 			// For links, only pass triangles and their color, a 2d float and a 3d color per vertex
 
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex,pos));
 			glEnableVertexAttribArray(0);
 
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, color));
 			glEnableVertexAttribArray(1);
+
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+			glEnableVertexAttribArray(2);
 
 		// Unbind the VBO and VAO safely
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
 
-void pushLinktoVertices(std::vector<float>* vertices, Vec2 worldPosA, Vec2 worldPosB, float r, float g, float b) {
+static void pushLine(std::vector<Vertex>* vertices, Vec2 worldPosA, Vec2 worldPosB, RGB color, float width) {
 	// MATH FOR CALCULATING RECTANGLES
 	Vec2 vector = worldPosB - worldPosA;
 	float length = sqrt(vector * vector);
 	Vec2 vectorUnit = vector / length;
 	Vec2 normalUnit = Vec2{ -vectorUnit.y, vectorUnit.x };
 
-	// shift the worldPosB and worldPosA by width/2 (width=4) in the normalUnit direction, both ways.
-	Vec2 v1 = worldPosA + normalUnit * 2.0f;	 // worldPosA_1
-	Vec2 v2 = worldPosA - normalUnit * 2.0f;	 // worldPosA_2
-	Vec2 v3 = worldPosB + normalUnit * 2.0f;	 // worldPosB_1
-	Vec2 v4 = worldPosB - normalUnit * 2.0f;	 // worldPosB_2
+	// shift the worldPosB and worldPosA by width/2 (width=6) in the normalUnit direction, both ways.
+	//														  // UV COORDINATES							
+	Vertex v1 = Vertex{worldPosA + normalUnit * width, color, Vec2{0.0f, 0.0f}};	 // worldPosA_1
+	Vertex v2 = Vertex{worldPosA - normalUnit * width, color, Vec2{1.0f, 0.0f}};	 // worldPosA_2
+	Vertex v3 = Vertex{worldPosB + normalUnit * width, color, Vec2{0.0f, 1.0f}};	 // worldPosB_1
+	Vertex v4 = Vertex{worldPosB - normalUnit * width, color, Vec2{1.0f, 1.0f}};	 // worldPosB_2
 
 	// These are the 4 vertices. Draw v1,v2,v3 and v2,v3,v4
 
-	vertices->push_back(v1.x);
-	vertices->push_back(v1.y);
-	vertices->push_back(r);
-	vertices->push_back(g);
-	vertices->push_back(b);
-	vertices->push_back(v2.x);
-	vertices->push_back(v2.y);
-	vertices->push_back(r);
-	vertices->push_back(g);
-	vertices->push_back(b);
-	vertices->push_back(v3.x);
-	vertices->push_back(v3.y);
-	vertices->push_back(r);
-	vertices->push_back(g);
-	vertices->push_back(b);
-	vertices->push_back(v2.x);
-	vertices->push_back(v2.y);
-	vertices->push_back(r);
-	vertices->push_back(g);
-	vertices->push_back(b);
-	vertices->push_back(v3.x);
-	vertices->push_back(v3.y);
-	vertices->push_back(r);
-	vertices->push_back(g);
-	vertices->push_back(b);
-	vertices->push_back(v4.x);
-	vertices->push_back(v4.y);
-	vertices->push_back(r);
-	vertices->push_back(g);
-	vertices->push_back(b);
+	vertices->push_back(v1);
+	vertices->push_back(v2);
+	vertices->push_back(v3);
+
+	vertices->push_back(v2);
+	vertices->push_back(v3);
+	vertices->push_back(v4);
 }
 
 void Renderer::passBufferLinks(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
 {
-	// 30 floats per link (2 triangles) * (3 vertices) * (2position + 3color)
+	// each link is 6 vertices in size (2 triangles) * (3 vertices)
 	// all the links AND THE ONE TO THE MOUSE
-	std::vector<float> vertices; vertices.reserve((simulation.getLinks().size() + 1) * 30);
+	std::vector<Vertex> vertices; vertices.reserve((simulation.getLinks().size() + 1) * 6);
 	
 	// 1 vertex per node, draw them as GL_POINTS
 
 	for (const auto& link : simulation.getLinks()) {
 		// Set color
-		float r = 1.0f, g = 1.0f, b = 1.0f; //  white
+		RGB color{1.0f, 1.0f, 1.0f}; //  white
 		if (iState.hoveredLink == link) {
-			r = 1.0f; g = 0.0f; b = 0.0f; // red
+			color = { 1.0f, 0.0f, 0.0f }; // red
 		}
 
 		Vec2 worldPosA = simulation.getNodePositions()[link.nodeA];
 		Vec2 worldPosB = simulation.getNodePositions()[link.nodeB];
 
-		pushLinktoVertices(&vertices, worldPosA, worldPosB, r, g, b);
+		pushLine(&vertices, worldPosA, worldPosB, color, 3.0f);
 	}
 	if (iState.draggedNodeId != -1) {
-		float r = 1.0f, g = 1.0f, b = 1.0f; //  white
+		RGB color{ 1.0f, 1.0f, 1.0f }; //  white
 		Vec2 worldPosA = simulation.getNodePositions()[iState.draggedNodeId];
 		Vec2 worldPosB = iState.worldMousePos;
 
-		pushLinktoVertices(&vertices, worldPosA, worldPosB, r, g, b);
+		pushLine(&vertices, worldPosA, worldPosB, color, 3.0f);
 	}
 
 	// Copy our vertices array into a buffer for OpenGL to use
 	// No need to bind the VAO, since the VBO already knows it uses the VAO for the instructions
 	glBindBuffer(GL_ARRAY_BUFFER, linkVBO);
-		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -470,9 +441,7 @@ void Renderer::renderLinks(const GraphSimulation& simulation, const InteractionS
 
 	// Send uniforms to the shader
 
-	glUniform2f(glGetUniformLocation(linkShaderProgram, "uViewportSize"), (float)viewportWidth, (float)viewportHeight);
-	glUniform2f(glGetUniformLocation(linkShaderProgram, "uOffset"), camera.offset.x, camera.offset.y);
-	glUniform2f(glGetUniformLocation(linkShaderProgram, "uDisplacement"), camera.displacement.x, camera.displacement.y);
+	glUniformMatrix4fv(glGetUniformLocation(linkShaderProgram, "uOrthoMatrix"), 1, GL_FALSE, camera.GetOrthoMatrix().data());
 	glUniform1f(glGetUniformLocation(linkShaderProgram, "uZoom"), camera.zoom);
 
 	glBindVertexArray(linkVAO); // Bind the VAO containing our triangle configuration

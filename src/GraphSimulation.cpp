@@ -247,7 +247,7 @@ void GraphSimulation::addNodeBarabasiAlbert(int k) {
 void GraphSimulation::createGridGraph(int numNodesX, int numNodesY, float width, float height)
 {
     deleteGraph();
-    Vec2 gridSize = Vec2{ 100.0f * numNodesX, 100.0f * numNodesY };
+    Vec2 gridSize = Vec2{ 60.0f * numNodesX, 60.0f * numNodesY };
 	std::vector<int> nodeIds; nodeIds.reserve(numNodesX * numNodesY);
     for(size_t i = 0; i < numNodesX; i++){
         for(size_t j = 0; j < numNodesY; j++){

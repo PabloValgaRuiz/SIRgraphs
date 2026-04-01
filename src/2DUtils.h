@@ -25,6 +25,16 @@ struct Vec2 {
     }
 };
 
+struct RGB {
+    float r, g, b;
+};
+
+struct Vertex {
+    Vec2 pos; // position
+    RGB color; // color
+    Vec2 uv;
+};
+
 struct Camera2D {
     Vec2 offset{ 0, 0 };
 	Vec2 displacement{ 0, 0 }; // Used for panning with mouse drag
@@ -35,28 +45,28 @@ struct Camera2D {
     // Convert ImGui Screen pixels to Physics World coordinates
     Vec2 ScreenToWorld(ImVec2 screenCoord) const {
         return Vec2{
-            ((screenCoord.x - canvas_p0.x - offset.x) / zoom) - displacement.x ,
-            ((screenCoord.y - canvas_p0.y - offset.y) / zoom) - displacement.y
+            ((screenCoord.x - canvas_p0.x - offset.x) / zoom) + displacement.x ,
+            ((screenCoord.y - canvas_p0.y - offset.y) / zoom) + displacement.y
         };
     }
 
     // Convert Physics World coordinates to ImGui Screen pixels
     ImVec2 WorldToScreen(Vec2 worldCoord) const {
         return ImVec2(
-            (worldCoord.x + displacement.x) * zoom + canvas_p0.x + offset.x,
-            (worldCoord.y + displacement.y) * zoom + canvas_p0.y + offset.y
+            (worldCoord.x - displacement.x) * zoom + canvas_p0.x + offset.x,
+            (worldCoord.y - displacement.y) * zoom + canvas_p0.y + offset.y
         );
     }
 
     std::array<float, 16> GetOrthoMatrix() const {
         // Calculate the world-space bounds of the screen using the inverted formula
-        float L = (-offset.x / zoom) - displacement.x;
-        float R = ((viewportSize.x - offset.x) / zoom) - displacement.x;
+        float L = displacement.x - viewportSize.x / (zoom * 2);
+        float R = displacement.x + viewportSize.x / (zoom * 2);
 
         // We swap Top and Bottom here to flip the Y-axis so 
         // Y grows downwards, matching ImGui and standard 2D canvases.
-        float T = (-offset.y / zoom) - displacement.y;
-        float B = ((viewportSize.y - offset.y) / zoom) - displacement.y;
+        float T = displacement.y - viewportSize.y / (zoom * 2);
+        float B = displacement.y + viewportSize.y / (zoom * 2);
 
         std::array<float, 16> ortho = { 0 }; // Initialize to 0
 
