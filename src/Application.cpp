@@ -156,8 +156,8 @@ void MyApp::UpdateViewportCamera() {
     if(ImGui::IsWindowHovered()){
         // PANNING
         if (iState.draggedNodeId == -1 && ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
-            camera.displacement.x += ImGui::GetIO().MouseDelta.x / camera.zoom;
-            camera.displacement.y += ImGui::GetIO().MouseDelta.y / camera.zoom;
+            camera.displacement.x -= ImGui::GetIO().MouseDelta.x / camera.zoom;
+            camera.displacement.y -= ImGui::GetIO().MouseDelta.y / camera.zoom;
 	    }
 
         // ZOOM
@@ -166,6 +166,7 @@ void MyApp::UpdateViewportCamera() {
             // Optional: Zoom towards mouse position
             camera.zoom *= (1 + wheel * 0.15f);
             if (camera.zoom < 0.1f) camera.zoom = 0.1f; // Cap zoom
+			else if (camera.zoom > 10.0f) camera.zoom = 10.0f;
         }
     }
 
