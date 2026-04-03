@@ -8,28 +8,19 @@
 
 #include "2DUtils.h"
 
-enum NodeState {
+static const float PI = 3.14159265f;
+
+enum SimType {
+    SIM_SIR = 0,
+    SIM_KURAMOTO = 1
+};
+
+enum StateSIR {
     S = 0,
     I = 1,
     R = 2
 };
 
-
-class Node {
-public:
-    int id;
-
-    Vec2 position;
-    Vec2 last_position;
-    Vec2 accel;
-    float radius;
-
-    NodeState state;
-
-    Node(int id, Vec2 pos, Vec2 accel, float r, NodeState state = S)
-        : id(id), position(pos), last_position(pos), accel(accel), radius(r), state(state) {
-    }
-};
 
 class Link {
 public:
@@ -76,6 +67,7 @@ public:
     void addForces();
     void UpdatePhysics(float deltaTime);
     void UpdateSIR(float deltaTime);
+    void updateKuramoto(float deltaTime);
 
     void addNodeErdosRenyi(float p);
     void addNodeBarabasiAlbert(int k);
@@ -92,13 +84,18 @@ public:
         links.emplace(nodeA, nodeB);
     }
 
-    int addNode(Vec2 pos, Vec2 accel = Vec2{ 0,0 }, float r = 20.0f, NodeState state = S) {
-  
+    int addNode(Vec2 pos, Vec2 accel = Vec2{ 0,0 }, float r = 20.0f, StateSIR stateSIR = S) {
+    
+        static std::uniform_real_distribution<float> dist(0, 2 * PI);
+        static std::uniform_real_distribution<float> freq_dist(0.8f, 1.2f);
+
         this->position.push_back(pos);
         this->last_position.push_back(pos);
         this->accel.push_back(accel);
         this->radius.push_back(r);
-        this->state.push_back(state);
+        this->stateSIR.push_back(stateSIR);
+        this->phaseKur.push_back(dist(rng));
+        this->frequency.push_back(freq_dist(rng));
 
         return (int)position.size() - 1;
 
@@ -147,15 +144,18 @@ public:
             last_position[id] = last_position[last_id];
             accel[id] = accel[last_id];
             radius[id] = radius[last_id];
-            state[id] = state[last_id];
+            stateSIR[id] = stateSIR[last_id];
+            phaseKur[id] = phaseKur[last_id];
+            frequency[id] = frequency[last_id];
         }
         // shrink the arrays
         this->position.pop_back();
         this->last_position.pop_back();
         this->accel.pop_back();
         this->radius.pop_back();
-        this->state.pop_back();
-
+        this->stateSIR.pop_back();
+        this->phaseKur.pop_back();
+        this->frequency.pop_back();
     }
 
     void deleteGraph(){
@@ -163,13 +163,21 @@ public:
         last_position.clear();
         accel.clear();
         radius.clear();
-        state.clear();
+        stateSIR.clear();
+        phaseKur.clear();
+        frequency.clear();
         links.clear();
     }
 
     void RecoverAll(){
-        for (int node = 0; node < state.size(); node++){
-	        state[node] = S;
+        for (int node = 0; node < stateSIR.size(); node++){
+	        stateSIR[node] = S;
+        }
+    }
+    void RandomPhases() {
+        std::uniform_real_distribution<float> dist(0, 2*PI);
+        for (int node = 0; node < phaseKur.size(); node++) {
+            phaseKur[node] = dist(rng);
         }
     }
 
@@ -177,13 +185,19 @@ public:
         return position.size();
 	}
 
-    NodeState getNodeState(int nodeId) const {
-        return state[nodeId];
+    StateSIR getNodeState(int nodeId) const {
+        return stateSIR[nodeId];
 	}
+    float getNodePhase(int nodeId) const {
+        return phaseKur[nodeId];
+    }
 
-    void SetNodeState(int nodeId, NodeState newState) {
-        state[nodeId] = newState;
+    void SetNodeState(int nodeId, StateSIR newStateSIR) {
+        stateSIR[nodeId] = newStateSIR;
 	}
+    void SetNodePhase(int nodeId, float newphase) {
+        phaseKur[nodeId] = newphase;
+    }
 
     const std::vector<Vec2>& getNodePositions() const{
         return position;
@@ -208,6 +222,9 @@ public:
     float lambdaInfection = 0.6f; // Infection rate
     float muRecovery = 0.2f; // Recovery rate
 
+    // Kuramoto dynamics
+    float couplingStrength = 1.0f;
+    float globalFrequency = 5.0f;
 
 
 private:
@@ -220,8 +237,14 @@ private:
     std::vector<Vec2> last_position;
     std::vector<Vec2> accel;
     std::vector<float> radius;
-    std::vector<NodeState> state;
-    std::vector<NodeState> newState;
+
+    std::vector<StateSIR> stateSIR;
+    std::vector<StateSIR> newStateSIR;
+
+    std::vector<float> phaseKur;
+    std::vector<float> newPhaseKur;
+    std::vector<float> frequency;
+
 
     std::unordered_set<Link> links;
 };

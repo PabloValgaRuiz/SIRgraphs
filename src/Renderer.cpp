@@ -57,10 +57,10 @@ Renderer::Renderer()
 }
 
 
-void Renderer::Render(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
+void Renderer::Render(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera, const SimType& simType)
 {
 	passBufferLinks(simulation, iState, camera);
-	passBufferNodes(simulation, iState, camera);
+	passBufferNodes(simulation, iState, camera, simType);
 
 
 	// BIND THE FBO (Intercept the draw calls)
@@ -236,7 +236,7 @@ static void pushCircle(std::vector<Vertex>* vertices, Vec2 center, float radius,
 	vertices->push_back(v4);
 }
 
-void Renderer::passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera)
+void Renderer::passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera, const SimType& simType)
 {
 	// 6 vertices per node
 	std::vector<Vertex> vertices; vertices.reserve(simulation.getN() * 6);
@@ -246,10 +246,21 @@ void Renderer::passBufferNodes(const GraphSimulation& simulation, const Interact
 
 		// Set color based on node state
 		RGB color = { 1.0f, 1.0f, 1.0f }; //  white
-		switch (simulation.getNodeState(node)) {
-		case S: color = { 0.0f, 0.0f, 1.0f }; break; // blue
-		case I: color = { 1.0f, 0.0f, 0.0f }; break; // red
-		case R: color = { 0.0f, 1.0f, 0.0f }; break; // green
+		switch (simType) {
+		case SIM_SIR:
+			switch (simulation.getNodeState(node)) {
+			case S: color = { 0.0f, 0.0f, 1.0f }; break; // blue
+			case I: color = { 1.0f, 0.0f, 0.0f }; break; // red
+			case R: color = { 0.0f, 1.0f, 0.0f }; break; // green
+			}
+		break;
+		case SIM_KURAMOTO:
+			float phase = simulation.getNodePhase(node);
+			phase = (1 + std::cos(phase))*0.5;
+			phase = phase * phase;
+			phase = phase * phase; // ((1 + cosx) ^ 4)/2
+			color = { phase, phase, 1.0f };
+			break;
 		}
 		if (iState.hoveredNodeId == node) {
 			color = { 1.0f, 1.0f, 1.0f }; // white

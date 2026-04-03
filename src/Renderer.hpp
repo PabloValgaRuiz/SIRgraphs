@@ -8,7 +8,7 @@ class Renderer{
 public:
 	Renderer();
 	//void Resize(int width, int height);
-	void Render(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera);
+	void Render(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera, const SimType& simType);
 
 	void Resize(int width, int height);
 	unsigned int getTextureID() const { return textureColorbuffer; }
@@ -20,7 +20,7 @@ private:
 	unsigned int nodeVBO, nodeVAO;
 	unsigned int nodeShaderProgram;
 	void initializeNodes();
-	void passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera);
+	void passBufferNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera, const SimType& simType);
 	void renderNodes(const GraphSimulation& simulation, const InteractionState& iState, const Camera2D& camera);
 
 	unsigned int linkVBO, linkVAO;
