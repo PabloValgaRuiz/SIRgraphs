@@ -86,36 +86,54 @@ void GraphSimulation::UpdateSIR(float deltaTime)
 {
     static std::uniform_real_distribution<double> dist(0, 1);
 
-    newState = state;
+    newStateSIR = stateSIR;
 
     // Infection
     for (const auto& link : links) {
         int nodeA = link.nodeA;
         int nodeB = link.nodeB;
 
-        if (state[nodeA] == I && state[nodeB] == S) {
+        if (stateSIR[nodeA] == I && stateSIR[nodeB] == S) {
             if (dist(rng) < lambdaInfection * deltaTime) {
-                newState[nodeB] = I;
+                newStateSIR[nodeB] = I;
             }
         }
-        else if (state[nodeA] == S && state[nodeB] == I) {
+        else if (stateSIR[nodeA] == S && stateSIR[nodeB] == I) {
             if (dist(rng) < lambdaInfection * deltaTime) {
-                newState[nodeA] = I;
+                newStateSIR[nodeA] = I;
             }
         }
     }
     //Recovery
-    for (int node = 0; node < state.size(); node++){
-        if (state[node] == I) {
+    for (int node = 0; node < stateSIR.size(); node++){
+        if (stateSIR[node] == I) {
             if (dist(rng) < muRecovery * deltaTime) {
                 if (epidemicType == 0)
-                    newState[node] = R;
+                    newStateSIR[node] = R;
                 else if (epidemicType == 1)
-                    newState[node] = S;
+                    newStateSIR[node] = S;
             }
         }
     }
-    std::swap(state, newState);
+    std::swap(stateSIR, newStateSIR);
+}
+
+void GraphSimulation::updateKuramoto(float deltaTime) {
+    newPhaseKur = phaseKur;
+
+    for (const auto& link : links) {
+        float phaseDiff = phaseKur[link.nodeB] - phaseKur[link.nodeA];
+
+        newPhaseKur[link.nodeA] += couplingStrength * sinf(phaseDiff) * deltaTime;
+        newPhaseKur[link.nodeB] -= couplingStrength * sinf(phaseDiff) * deltaTime;
+    }
+    
+    for (int i = 0; i < phaseKur.size(); i++) {
+        newPhaseKur[i] += globalFrequency * frequency[i] * deltaTime;
+        newPhaseKur[i] = fmodf(newPhaseKur[i], 2 * PI);
+    }
+    std::swap(phaseKur, newPhaseKur);
+
 }
 
 void GraphSimulation::createRandomGraph(int numNodes, float p, float width, float height) {

@@ -57,6 +57,12 @@ struct Camera2D {
             (worldCoord.y - displacement.y) * zoom + canvas_p0.y + offset.y
         );
     }
+    ImVec2 WorldToScreenNoP0(Vec2 worldCoord) const {
+        return ImVec2(
+            (worldCoord.x - displacement.x) * zoom + offset.x,
+            (worldCoord.y - displacement.y) * zoom + offset.y
+        );
+    }
 
     std::array<float, 16> GetOrthoMatrix() const {
         // Calculate the world-space bounds of the screen using the inverted formula

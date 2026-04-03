@@ -63,7 +63,14 @@ void MyApp::run() {
             simulation.UpdatePhysics(1.0f / 75);
         }
         if (isSimulationPlaying) {
-            simulation.UpdateSIR(1.0f / 75);
+            switch (simType) {
+            case SIM_SIR:
+                simulation.UpdateSIR(1.0f / 75);
+                break;
+            case SIM_KURAMOTO:
+                simulation.updateKuramoto(1.0f / 75);
+                break;
+            }
         }
         deltaTimeAccumulator -= 1.0f / 75;
     }
@@ -73,7 +80,7 @@ void MyApp::run() {
     //render();
     
     renderer.Resize((int)camera.viewportSize.x, (int)camera.viewportSize.y);
-    renderer.Render(simulation, iState, camera);
+    renderer.Render(simulation, iState, camera, simType);
 
     uint32_t textureID = renderer.getTextureID();
     ImGui::Image(
@@ -101,6 +108,14 @@ void MyApp::run() {
         camera.zoom, iState.worldMousePos.x, iState.worldMousePos.y,
         camera.WorldToScreen(iState.worldMousePos).x, camera.WorldToScreen(iState.worldMousePos).y);
     ImGui::Text(debugInfo);
+
+    // ID OF THE NODE
+    if (iState.hoveredNodeId != -1) {
+        ImGui::SetCursorPos(camera.WorldToScreenNoP0(iState.worldMousePos));
+        char nodeIDtext[32];
+        snprintf(nodeIDtext, sizeof(nodeIDtext), "ID: %i", (int)iState.hoveredNodeId);
+        ImGui::Text(nodeIDtext);
+    }
 #endif
     // ---------------------------------------------
     ImGui::End();
@@ -184,7 +199,7 @@ void MyApp::HandleInput(){
         iState.hoveredNodeId = simulation.GetHoveredNodeId(iState.worldMousePos);
         iState.hoveredLink = simulation.GetHoveredLink(iState.worldMousePos);
 
-        if (isInfectionMode == 1) {
+        if (isCreationMode == 1) {
             // if we are in infection mode, left clicking on a node infects it and right clicking on a node makes it susceptible
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 if (iState.hoveredNodeId != -1) {
@@ -197,7 +212,7 @@ void MyApp::HandleInput(){
                 }
             }
         }
-        else if (isInfectionMode == 0) {
+        else if (isCreationMode == 0) {
             // delete a node where you right click if there is a node there
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
                 if (iState.hoveredNodeId != -1) {
@@ -331,23 +346,47 @@ void MyApp::ParameterWindowUI(){
         ImGui::PopStyleColor();
     }
 
-    ImGui::RadioButton("SIR", &simulation.epidemicType, 0); ImGui::SameLine();
-    ImGui::RadioButton("SIS", &simulation.epidemicType, 1);
+    ImGui::RadioButton("Epidemics", (int32_t*) &simType, (int)SIM_SIR); ImGui::SameLine();
+    ImGui::RadioButton("Kuramoto", (int32_t*) &simType, (int)SIM_KURAMOTO);
 
-    ImGui::PushItemWidth(100.0f);
-    ImGui::DragFloat("Infection rate", &simulation.lambdaInfection, 0.01f, 0.0f, 1.0f, "%.2f");
-    ImGui::DragFloat("Recovery rate", &simulation.muRecovery, 0.01f, 0.0f, 1.0f, "%.2f");
-    ImGui::PopItemWidth();
+    if (simType == SIM_SIR) {
+        ImGui::RadioButton("SIR", &simulation.epidemicType, 0); ImGui::SameLine();
+        ImGui::RadioButton("SIS", &simulation.epidemicType, 1);
 
-    // Switch between creating network and infecting nodes
-    ImGui::RadioButton("Create network", &isInfectionMode, 0); ImGui::SameLine();
-    ImGui::RadioButton("Infect nodes", &isInfectionMode, 1);
+        ImGui::PushItemWidth(100.0f);
+        ImGui::DragFloat("Infection rate", &simulation.lambdaInfection, 0.01f, 0.0f, 1.0f, "%.2f");
+        ImGui::DragFloat("Recovery rate", &simulation.muRecovery, 0.01f, 0.0f, 1.0f, "%.2f");
+        ImGui::PopItemWidth();
 
-    if (ImGui::Button("Recover all nodes", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
-        simulation.RecoverAll();
+        if (ImGui::Button("Recover all nodes", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+            simulation.RecoverAll();
+        }
+
+        // Switch between creating network and infecting nodes
+        ImGui::RadioButton("Create network", &isCreationMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Infect nodes", &isCreationMode, 1);
+
+        drawInfectedPlot();
+
+    }
+    if (simType == SIM_KURAMOTO) {
+        ImGui::PushItemWidth(100.0f);
+        ImGui::DragFloat("Coupling strength", &simulation.couplingStrength, 0.01f, 0.0f, 1.0f, "%.2f");
+        ImGui::PopItemWidth();
+
+        // Switch between creating network and infecting nodes
+        ImGui::RadioButton("Create network", &isCreationMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Reset phases", &isCreationMode, 1);
+
+        if (ImGui::Button("Randomize all phases", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+            simulation.RandomPhases();
+        }
+
     }
 
-    drawInfectedPlot();
+
+    
+
 
     ImGui::End();
 }

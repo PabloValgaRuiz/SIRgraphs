@@ -46,5 +46,8 @@ private:
 	float deltaTimeAccumulator = 0.0f;
 
     // Switch between creating network and infecting nodes
-    int isInfectionMode = 0;
+    int isCreationMode = 0;
+
+    // Pick dynamics to display and affect
+    SimType simType = SIM_SIR;
 };
