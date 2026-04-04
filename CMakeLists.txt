@@ -10,7 +10,7 @@ set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui)
 # Gather all the ImGui source files
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
-    # ${IMGUI_DIR}/imgui_demo.cpp
+    ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
@@ -18,19 +18,39 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
+set(GLAD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad)
+
+set (GLAD_SOURCES
+    ${GLAD_DIR}/src/glad.c
+)
+
 set(APP_SOURCES
     src/main.cpp
     src/Application.cpp
+    src/GraphSimulation.cpp
+    src/Renderer.cpp
 )
 
-# build an executable with ImGui's code and the app's code
-add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES})
+# LIBRARY FOR READING XML
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/PugiXML)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/nativefiledialog-extended)
 
+# build an executable with ImGui's code and the app's code
+add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES} ${GLAD_SOURCES})
+
+target_link_libraries(SIRgraphs PRIVATE
+                pugixml-static
+                nfd
+                )
 
 target_include_directories(SIRgraphs PRIVATE
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    ${GLAD_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/pcg
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/PugiXML/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/nativefiledialog-extended/src/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/
 )
 
 
