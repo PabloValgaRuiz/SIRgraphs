@@ -1,5 +1,6 @@
 #include "GraphSimulation.h"
-
+#include "vendor/PugiXML/src/pugixml.hpp"
+#include <vendor/nativefiledialog-extended/src/include/nfd.h>
 
 void GraphSimulation::UpdatePhysics(float deltaTime) {
     if (deltaTime <= 0.0f) return;
@@ -304,6 +305,167 @@ void GraphSimulation::createBarabasiAlbertGraph(int numNodes, int k, float width
 
     for (int i = k; i < numNodes; i++) {
         addNodeBarabasiAlbert(k);
+    }
+}
+
+void GraphSimulation::readGraphML()
+{
+    deleteGraph();
+    std::string path;
+
+    NFD_Init();
+
+    nfdu8char_t* outPath;
+    nfdu8filteritem_t filters[1] = { { "GraphML file", "graphml" } };
+    nfdopendialogu8args_t args = { 0 };
+    args.filterList = filters;
+    args.filterCount = 1;
+    nfdresult_t result = NFD_OpenDialogU8_With(&outPath, &args);
+    if (result == NFD_OKAY)
+    {
+        puts("Success!");
+        path = outPath;
+        NFD_FreePathU8(outPath);
+    }
+    else if (result == NFD_CANCEL)
+    {
+        puts("User pressed cancel.");
+    }
+    else
+    {
+        printf("Error: %s\n", NFD_GetError());
+    }
+
+    NFD_Quit();
+
+
+    pugi::xml_document doc;
+    if (!doc.load_file(path.c_str())) std::cout << "Failed to read graph" << std::endl;
+    else {
+        std::unordered_map<std::string, int> ids;
+        std::uniform_real_distribution<float> dist;
+
+        bool isPositionData = false;
+        std::string xkey, ykey;
+
+        // Navigate to the graph element
+        auto graphml = doc.child("graphml");
+        pugi::xml_node graph = graphml.child("graph");
+
+        auto xkeynode = graphml.find_child_by_attribute("key", "attr.name", "x");
+        auto ykeynode = graphml.find_child_by_attribute("key", "attr.name", "y");
+        if (xkeynode && ykeynode) {
+            isPositionData = true;
+            xkey = xkeynode.attribute("id").value();
+            ykey = ykeynode.attribute("id").value();
+        }
+        
+        for (pugi::xml_node node : graph.children("node")) {
+            int i = addNode(Vec2{ dist(rng), dist(rng) });
+            ids.emplace(node.attribute("id").value(), i);
+            if (isPositionData) {
+                auto x = node.find_child_by_attribute("data", "key", xkey.c_str());
+                auto y = node.find_child_by_attribute("data", "key", ykey.c_str());
+                position[i] = Vec2{ x.text().as_float(), y.text().as_float() };
+            }
+
+        }
+
+        for (pugi::xml_node edge : graph.children("edge")) {
+            Link link;
+            int nodeA = ids.at(edge.attribute("source").value());
+            int nodeB = ids.at(edge.attribute("target").value());
+            addLink(nodeA, nodeB);
+        }
+        std::cout << "Read " << getN() << " nodes and " << getLinks().size() << " edges." << std::endl;
+        for (auto link : links) {
+            std::cout << link.nodeA << ", " << link.nodeB << std::endl;
+        }
+        std::cout << "Success saving graph" << std::endl;
+    }
+}
+
+void GraphSimulation::saveGraphML()
+{
+    std::string path;
+
+    NFD_Init();
+
+    nfdu8char_t* outPath;
+    nfdu8filteritem_t filters[1] = { { "GraphML file", "graphml" } };
+    nfdsavedialogu8args_t args = { 0 };
+    args.filterList = filters;
+    args.filterCount = 1;
+    nfdresult_t result = NFD_SaveDialogU8_With(&outPath, &args);
+    if (result == NFD_OKAY)
+    {
+        puts("Success!");
+        puts(outPath);
+        path = outPath;
+        NFD_FreePathU8(outPath);
+    }
+    else if (result == NFD_CANCEL)
+    {
+        puts("User pressed cancel.");
+    }
+    else
+    {
+        printf("Error: %s\n", NFD_GetError());
+    }
+
+    NFD_Quit();
+
+    pugi::xml_document doc;
+
+    pugi::xml_node decl = doc.prepend_child(pugi::node_declaration);
+    decl.append_attribute("version") = "1.0";
+    decl.append_attribute("encoding") = "UTF-8";
+
+    auto graphml = doc.append_child("graphml");
+    graphml.append_attribute("xmlns").set_value("http://graphml.graphdrawing.org/xmlns");
+
+    // POSITION X AND Y
+    auto keyX = graphml.append_child("key");
+    keyX.append_attribute("id") = "d0";
+    keyX.append_attribute("for") = "node";
+    keyX.append_attribute("attr.name") = "x";
+    keyX.append_attribute("attr.type") = "float";
+
+    auto keyY = graphml.append_child("key");
+    keyY.append_attribute("id") = "d1";
+    keyY.append_attribute("for") = "node";
+    keyY.append_attribute("attr.name") = "y";
+    keyY.append_attribute("attr.type") = "float";
+
+
+    auto graph = graphml.append_child("graph");
+    graph.append_attribute("id").set_value("graph");
+    graph.append_attribute("edgedefault").set_value("undirected");
+
+    for (int i = 0; i < position.size(); i++) {
+        auto node = graph.append_child("node");
+        node.append_attribute("id").set_value("n"+std::to_string(i));
+
+        auto dataX = node.append_child("data");
+        dataX.append_attribute("key") = "d0";
+        dataX.append_child(pugi::node_pcdata).set_value(std::to_string(position[i].x).c_str());
+
+        auto dataY = node.append_child("data");
+        dataY.append_attribute("key") = "d1";
+        dataY.append_child(pugi::node_pcdata).set_value(std::to_string(position[i].y).c_str());
+
+    }
+    for (const auto& link : links) {
+        auto edge = graph.append_child("edge");
+        edge.append_attribute("source").set_value("n" + std::to_string(link.nodeA));
+        edge.append_attribute("target").set_value("n" + std::to_string(link.nodeB));
+    }
+
+    if (!doc.save_file(path.c_str())){
+        std::cout << "Failed to save graph" << std::endl;
+    }
+    else{
+        std::cout << "Success saving graph" << std::endl;
     }
 }
 
