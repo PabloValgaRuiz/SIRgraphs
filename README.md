@@ -36,7 +36,7 @@ Loading and saving graphs
 
 ## DIRECT DOWNLOAD
 
-The compiled executables can be found in the releases window for Windows and macOS. The application isn't signed with a creator certificate, so the operative system will flag them as dangerous. If you don't want to compile the code from source, press "execute anyways" on Windows. On macOS, right-click the application and select "Open", then open anyways.
+The compiled executables can be found in the [Releases Window](../../releases/latest) for Windows, MacOS and Linux . The application may not be signed with a creator certificate, so the operative system will flag them as dangerous. If you don't want to compile the code from source, press "execute anyways" on Windows. On macOS, unzip the file, right-click the application and select "Open", then open anyways. On linux, unzip the file and execute it from the command line.
 
 If using macOS, make sure glfw is installed.
 ```
