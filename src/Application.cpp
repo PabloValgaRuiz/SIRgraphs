@@ -66,18 +66,19 @@ void MyApp::run() {
             switch (simType) {
             case SIM_SIR:
                 simulation.UpdateSIR(1.0f / 75);
+                deltaTimeAccumulator -= 1.0f / 75;
                 break;
             case SIM_KURAMOTO:
-                simulation.updateKuramoto(1.0f / 75);
+                simulation.updateKuramoto(0.25f / 75);
+                deltaTimeAccumulator -= 0.25f / 75;
                 break;
             }
         }
-        deltaTimeAccumulator -= 1.0f / 75;
+        else deltaTimeAccumulator -= 1.0f / 75;
     }
 
 
-    // Render the visuals in the simulation viewport
-    //render();
+    // render in the simulation viewport
     
     renderer.Resize((int)camera.viewportSize.x, (int)camera.viewportSize.y);
     renderer.Render(simulation, iState, camera, simType);
@@ -256,6 +257,14 @@ void MyApp::ParameterWindowUI(){
 
     static int numNodesRGx = 5;
 	static int numNodesRGy = 5;
+
+    if (ImGui::Button("Load graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+        simulation.readGraphML();
+    }
+    if (ImGui::Button("Save graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+        simulation.saveGraphML();
+    }
+
     if (ImGui::Button("Create regular graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
         simulation.createGridGraph(numNodesRGx, numNodesRGy, camera.viewportSize.x, camera.viewportSize.y);
     }
@@ -381,12 +390,10 @@ void MyApp::ParameterWindowUI(){
         if (ImGui::Button("Randomize all phases", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
             simulation.RandomPhases();
         }
-
+        if (ImGui::Button("Synchronize all phases", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
+            simulation.SynchronizePhases();
+        }
     }
-
-
-    
-
 
     ImGui::End();
 }

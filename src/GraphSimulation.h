@@ -75,6 +75,9 @@ public:
     void createRandomGraph(int numNodes, float p, float width, float height);
     void createBarabasiAlbertGraph(int numNodes, int k, float width, float height);
 
+    void readGraphML();
+    void saveGraphML();
+
     int GetHoveredNodeId(Vec2 localMousePos);
     Link GetHoveredLink(Vec2 localMousePos);
 
@@ -178,6 +181,11 @@ public:
         std::uniform_real_distribution<float> dist(0, 2*PI);
         for (int node = 0; node < phaseKur.size(); node++) {
             phaseKur[node] = dist(rng);
+        }
+    }
+    void SynchronizePhases() {
+        for (int node = 0; node < phaseKur.size(); node++) {
+            phaseKur[node] = 0;
         }
     }
 
