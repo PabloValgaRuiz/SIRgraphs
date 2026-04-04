@@ -85,7 +85,7 @@ jobs:
     - name: Install Linux Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake libgl1-mesa-dev xorg-dev libxkbcommon-dev libwayland-dev wayland-protocols
+        sudo apt-get install -y cmake libgl1-mesa-dev xorg-dev libxkbcommon-dev libwayland-dev wayland-protocols libgtk-3-dev
 
     - name: Configure CMake
       run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
