@@ -381,6 +381,7 @@ void MyApp::ParameterWindowUI(){
     if (simType == SIM_KURAMOTO) {
         ImGui::PushItemWidth(100.0f);
         ImGui::DragFloat("Coupling strength", &simulation.couplingStrength, 0.01f, 0.0f, 1.0f, "%.2f");
+        ImGui::DragFloat("Frequency multiplier", &simulation.globalFrequency, 0.01f, 0.0f, 5.0f, "%.2f");
         ImGui::PopItemWidth();
 
         // Switch between creating network and infecting nodes
