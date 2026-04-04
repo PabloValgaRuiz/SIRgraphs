@@ -26,7 +26,15 @@ Once your graph is created, select the "Infect nodes" option below. Left-click a
 
 You can change the infection and recovery rates, and switch between the Susceptible-Infected-Recovered (SIR) model and the Susceptible-Infected-Susceptible (SIS) model.
 
-## Download binary executable
+### New stuff
+
+New simulation -> Kuramoto model for synchornization. Switch between Kuramoto and SIR models with a button.
+
+New graph -> regular network. Build a 2d grid with set width and height.
+
+Loading and saving graphs
+
+## DIRECT DOWNLOAD
 
 The compiled executables can be found in the releases window for Windows and macOS. The application isn't signed with a creator certificate, so the operative system will flag them as dangerous. If you don't want to compile the code from source, press "execute anyways" on Windows. On macOS, right-click the application and select "Open", then open anyways.
 
@@ -98,3 +106,7 @@ Dear ImGui (Docking Branch) - Easy UI library.
 GLFW - Window and OpenGL context management.
 
 PCG Random - High-performance random number generation.
+
+nativefiledialog-extended - Opening file explorer and selecting files
+
+PugiXML - XML file support for saving and loading GraphML files
