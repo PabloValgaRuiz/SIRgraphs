@@ -18,7 +18,7 @@ jobs:
     - name: Checkout Code and Submodules
       uses: actions/checkout@v4
       with:
-        submodules: recursive # CRITICAL: Downloads ImGui!
+        submodules: recursive # CRITICAL
 
     - name: Configure CMake
       run: cmake -B build -S .
@@ -45,7 +45,7 @@ jobs:
         submodules: recursive
 
     - name: Install Mac Dependencies
-      run: brew install glfw cmake
+      run: brew install cmake #glfw
 
     - name: Configure CMake
       run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
