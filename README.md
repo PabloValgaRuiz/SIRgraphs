@@ -4,8 +4,8 @@ An interactive graph simulation of the SIR (Susceptible, Infected, Recovered) an
 
 This project allows you to build complex networks in real-time, save or load graphs, and simulate how an infection spreads based on parameters you can tune (implemented Kuramoto model to see how networks synchronize).
 
-<img width="450" alt="Captura de pantalla 2026-04-04 213206" src="https://github.com/user-attachments/assets/18a041f7-8fd6-453e-8aa3-fc87efec76d0" />
-<img width="450" alt="Captura de pantalla 2026-04-04 213335" src="https://github.com/user-attachments/assets/3551bed6-ee3f-4a65-85eb-965aa6e92dc9" />
+<img width="550" alt="Captura de pantalla 2026-04-04 213206" src="https://github.com/user-attachments/assets/18a041f7-8fd6-453e-8aa3-fc87efec76d0" />
+<img width="550" alt="Captura de pantalla 2026-04-04 213335" src="https://github.com/user-attachments/assets/3551bed6-ee3f-4a65-85eb-965aa6e92dc9" />
 
 You can dock the viewport and settings window on the background window however you like.
 
@@ -25,21 +25,31 @@ See detailed examples [here](#examples-for-saving-and-loading).
 
 While the **Create network** button all the way below the parameter window is selected, **left-clicking** anywhere in the viewport creates a node. While hovering over a node, **right-clicking** will delete it. **Left-clicking and dragging** from one node to another will create a link between them, and right-clicking over a link will delete it.
 
-On the **parameters window**, there are options to easily create a random graph (**Erdos-Renyi**) and a scale-free graph (**Barabási-Albert**) from the specified number of nodes and edges. You can also add nodes one by one following their respective graph rules and based on the edge probability or links per node options above. Pressing **shift** while **left clicking** "Add Erdos-Renyi node" or "Add Barabasi-Albert node" will add 10 nodes.
+On the **parameters window**, there are options to easily create a **regular graph**, random graph (**Erdos-Renyi**) and a scale-free graph (**Barabási-Albert**) from the specified number of nodes and edges. You can also add nodes one by one following their respective graph rules and based on the edge probability or links per node options above. An "Erdos-Renyi" node will link to random nodes based on the set probability, and a "Barabásí-Albert" node will likely attatch to high-degree nodes.
 
-You can also press Delete graph to start again.
+Pressing **shift** while left clicking **Add Erdos-Renyi node** or **Add Barabasi-Albert node** will add 10 nodes. This way of building a graph is arguably the best for building graphs with small-world properties.
 
-Below you can find physical parameters to tweak the way the nodes are arranged and move.
+You can also press **Delete graph** to start again.
 
-### Simulating an epidemic
+Below you can find physical parameters to tweak the way the nodes are arranged and move. If the graph is very tangled, lowering the **Central gravity** and then increasing it can help.
+
+Lowering the damping might cause the simulation to grow unstable and fly outside the screen. If this happens, sometimes it will come back to the origin (increase the central gravity). Otherwise, deleting the graph is the only option. The simulation can handle for now a few thousand nodes before lagging (repulsion force loops over every pair of nodes so it scales with $O(N^2)$. However, the SIR and Kuramoto models can handle tens of thousands of nodes, so consider pausing the physics simulation in that case.
+
+### Simulating an epidemic (SIR or SIS)
 
 Once your graph is created, select the **Infect nodes** option below. Left-click a node to infect it, or right-click a node to recover it. Press the **PLAY SIMULATION** button to start the dynamics.
 
 You can change the infection and recovery rates, and switch between the Susceptible-Infected-Recovered (SIR) model and the Susceptible-Infected-Susceptible (SIS) model.
 
+### Simulating synchornization (Kuramoto)
+
+Switch from the epidemic to synchronization with the **Kuramoto** button below the "PLAY SIMULATION" button. You can tune the coupling strength for the links and the overall frequency of the nodes. These are independent and decreasing the overall frequency will affect the dynamics in the same way as increasing the coupling would.
+
+Also, increasing the coupling strength above 10 or 20 may have unexpected effects (it's too big of a jump per frame).
+
 ### New stuff
 
-New simulation -> **Kuramoto model** for synchornization. Switch between Kuramoto and SIR models with a button.
+New simulation -> **Kuramoto model**. Switch between Kuramoto and SIR models with a button.
 
 New graph -> **regular network**. Build a 2d grid with set width and height.
 
