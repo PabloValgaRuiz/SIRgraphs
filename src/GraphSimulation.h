@@ -26,6 +26,7 @@ class Link {
 public:
     int nodeA;
     int nodeB;
+    float weight{ 1.0 };
 
     Link() {
         nodeA = -1;
@@ -36,6 +37,11 @@ public:
         // Enforce order for undirected graph (smaller ID first).
         nodeA = std::min(a, b);
         nodeB = std::max(a, b);
+    }
+    Link(int a, int b, float _weight) {
+        nodeA = std::min(a, b);
+        nodeB = std::max(a, b);
+        weight = _weight;
     }
     bool operator==(const Link& other) const {
         return nodeA == other.nodeA && nodeB == other.nodeB;
@@ -83,8 +89,8 @@ public:
 
     // add node
 
-    void addLink(int nodeA, int nodeB) {        
-        links.emplace(nodeA, nodeB);
+    void addLink(int nodeA, int nodeB, float weight=1.0f) {        
+        links.emplace(nodeA, nodeB, weight);
     }
 
     int addNode(Vec2 pos, Vec2 accel = Vec2{ 0,0 }, float r = 20.0f, StateSIR stateSIR = S) {
