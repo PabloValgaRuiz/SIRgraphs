@@ -428,7 +428,7 @@ void Renderer::passBufferLinks(const GraphSimulation& simulation, const Interact
 		Vec2 worldPosA = simulation.getNodePositions()[link.nodeA];
 		Vec2 worldPosB = simulation.getNodePositions()[link.nodeB];
 
-		pushLine(&vertices, worldPosA, worldPosB, color, 3.0f);
+		pushLine(&vertices, worldPosA, worldPosB, color, 3.0f * link.weight);
 	}
 	if (iState.draggedNodeId != -1) {
 		RGB color{ 1.0f, 1.0f, 1.0f }; //  white

@@ -124,9 +124,9 @@ void GraphSimulation::updateKuramoto(float deltaTime) {
 
     for (const auto& link : links) {
         float phaseDiff = phaseKur[link.nodeB] - phaseKur[link.nodeA];
-
-        newPhaseKur[link.nodeA] += couplingStrength * sinf(phaseDiff) * deltaTime;
-        newPhaseKur[link.nodeB] -= couplingStrength * sinf(phaseDiff) * deltaTime;
+        float sinphase = sinf(phaseDiff);
+        newPhaseKur[link.nodeA] += couplingStrength * sinphase * deltaTime;
+        newPhaseKur[link.nodeB] -= couplingStrength * sinphase * deltaTime;
     }
     
     for (int i = 0; i < phaseKur.size(); i++) {
@@ -345,8 +345,8 @@ void GraphSimulation::readGraphML()
         std::unordered_map<std::string, int> ids;
         std::uniform_real_distribution<float> dist;
 
-        bool isPositionData = false;
-        std::string xkey, ykey;
+        bool isPositionData = false, isWeightData = false;
+        std::string xkey, ykey, weightkey;
 
         // Navigate to the graph element
         auto graphml = doc.child("graphml");
@@ -354,15 +354,20 @@ void GraphSimulation::readGraphML()
 
         auto xkeynode = graphml.find_child_by_attribute("key", "attr.name", "x");
         auto ykeynode = graphml.find_child_by_attribute("key", "attr.name", "y");
+        auto weightkeynode = graphml.find_child_by_attribute("key", "attr.name", "weight");
         if (xkeynode && ykeynode) {
             isPositionData = true;
             xkey = xkeynode.attribute("id").value();
             ykey = ykeynode.attribute("id").value();
         }
-        
+        if (weightkeynode) {
+            isWeightData = true;
+            weightkey = weightkeynode.attribute("id").value();
+        }
         for (pugi::xml_node node : graph.children("node")) {
             int i = addNode(Vec2{ dist(rng), dist(rng) });
             ids.emplace(node.attribute("id").value(), i);
+
             if (isPositionData) {
                 auto x = node.find_child_by_attribute("data", "key", xkey.c_str());
                 auto y = node.find_child_by_attribute("data", "key", ykey.c_str());
@@ -375,11 +380,19 @@ void GraphSimulation::readGraphML()
             Link link;
             int nodeA = ids.at(edge.attribute("source").value());
             int nodeB = ids.at(edge.attribute("target").value());
-            addLink(nodeA, nodeB);
+            
+            if(isWeightData){
+                float weight = edge.find_child_by_attribute("data", "key", weightkey.c_str()).text().as_float();
+                addLink(nodeA, nodeB, weight);
+            }
+            else{
+                addLink(nodeA, nodeB);
+            }
+
         }
-        std::cout << "Read " << getN() << " nodes and " << getLinks().size() << " edges." << std::endl;
+        std::cout << "Read " << getN() << " nodes and " << getLinks().size() << " edges." << "\n";
         for (auto link : links) {
-            std::cout << link.nodeA << ", " << link.nodeB << std::endl;
+            std::cout << link.nodeA << ", " << link.nodeB << ": " << link.weight << "\n";
         }
         std::cout << "Success saving graph" << std::endl;
     }
