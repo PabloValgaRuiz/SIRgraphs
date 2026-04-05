@@ -41,11 +41,13 @@ Once your graph is created, select the **Infect nodes** option below. Left-click
 
 You can change the infection and recovery rates, and switch between the Susceptible-Infected-Recovered (SIR) model and the Susceptible-Infected-Susceptible (SIS) model.
 
+Once you want to restart, press the **Recover all nodes** button below the rates.
+
 ### Simulating synchornization (Kuramoto)
 
-Switch from the epidemic to synchronization with the **Kuramoto** button below the "PLAY SIMULATION" button. You can tune the coupling strength for the links and the overall frequency of the nodes. These are independent and decreasing the overall frequency will affect the dynamics in the same way as increasing the coupling would.
+Switch from the epidemic to synchronization with the **Kuramoto** button below the "PLAY SIMULATION" button. You can set the nodes to have random phases or to be synchronized with the buttons below (they still always have random frequencies from 0.8 to 1.2).
 
-Also, increasing the coupling strength above 10 or 20 may have unexpected effects (it's too big of a jump per frame).
+You can tune the coupling strength for the links and the overall frequency of the nodes. These are independent and decreasing the overall frequency will affect the dynamics in the same way as increasing the coupling would. Also, increasing the coupling strength above 10 or 20 may have unexpected effects (it's too big of a jump per frame).
 
 ### New stuff
 
