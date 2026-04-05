@@ -57,7 +57,18 @@ New graph -> **regular network**. Build a 2d grid with set width and height.
 
 ## DIRECT DOWNLOAD
 
-The compiled executables can be found in the [Releases Window](../../releases/latest) for Windows, MacOS and Linux . The application may not be signed with a creator certificate, so the operative system will flag them as dangerous. If you don't want to compile the code from source, press "execute anyways" on Windows. On macOS, unzip the file, right-click the application and select "Open", then open anyways. On linux, unzip the file and execute it from the command line.
+The compiled executables can be found in the [Releases Window](../../releases/latest) for Windows, MacOS and Linux . The application may not be signed with a creator certificate, so the operative system will flag them as dangerous. If you don't want to compile the code from source:
+
+### On Windows:
+Press "execute anyways" on Windows.
+
+### On macOS:
+
+Unzip the file, right-click the application and select "Open". It might say that the file is damaged. If there is not an option to still open, open System Settings -> Privacy & Security, where it says the app has been blocked. Then click open anyway. As it is likely that Dear ImGui can't read the "ini" file, you might have to drag the windows and dock them on the background.
+
+### On Linux:
+
+Unzip the file and execute it from the command line.
 
 
 ## Building from Source (CMake)
