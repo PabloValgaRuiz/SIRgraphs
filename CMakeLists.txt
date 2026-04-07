@@ -68,8 +68,6 @@ if (WIN32)
     )
 
 elseif (APPLE)
-    # no glfw3 on macos by defect
-    #find_package(glfw3 REQUIRED)
 
     # download and include glfw
     include(FetchContent)
@@ -96,7 +94,17 @@ elseif (APPLE)
     find_library(COCOA_FRAMEWORK Cocoa)
     find_library(IOKIT_FRAMEWORK IOKit)
     find_library(COREVIDEO_FRAMEWORK CoreVideo)
+
     target_link_libraries(SIRgraphs PRIVATE ${COCOA_FRAMEWORK} ${IOKIT_FRAMEWORK} ${COREVIDEO_FRAMEWORK})
+    
+    # and these so that nativefiledialog-extended works
+    find_library(APPKIT_FRAMEWORK AppKit)
+    find_library(UTI_FRAMEWORK UniformTypeIdentifiers)
+
+    target_link_libraries(SIRgraphs PRIVATE 
+        ${APPKIT_FRAMEWORK} 
+        ${UTI_FRAMEWORK}
+    )
 
 elseif (UNIX AND NOT APPLE)
 
