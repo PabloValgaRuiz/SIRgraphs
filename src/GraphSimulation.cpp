@@ -450,6 +450,7 @@ void GraphSimulation::saveGraphML()
     keyY.append_attribute("attr.name") = "y";
     keyY.append_attribute("attr.type") = "float";
 
+    // WEIGHT
     auto keyWeight = graphml.append_child("key");
     keyWeight.append_attribute("id") = "d2";
     keyWeight.append_attribute("for") = "edge";
@@ -494,7 +495,7 @@ void GraphSimulation::saveGraphML()
 
 // see if the mouse is over a node
 int GraphSimulation::GetHoveredNodeId(Vec2 localMousePos) {
-    for (int node = 0; node < position.size(); node++) {
+    for (int node = position.size()-1; node >= 0 ; node--) {
 
         float dx = position[node].x - localMousePos.x;
         float dy = position[node].y - localMousePos.y;
@@ -512,6 +513,7 @@ Link GraphSimulation::GetHoveredLink(Vec2 localMousePos)
     // get rectangle from the link and see if the mouse is in it
 
     float width = 3.0f;// (*2/2); //half the width each side, but also twice so it's easier to click (since the line is thin)
+    Link hoveredLink{};
     for (const auto& link : links) {
 
 
@@ -530,9 +532,10 @@ Link GraphSimulation::GetHoveredLink(Vec2 localMousePos)
 
             // CHECK: 0 < AB dot AC < AB dot AB (proof: 0 < Proj < LenAB, where Proj = ABunit dot AC -> lenAB * Proj = AB dot AC)
             if (vectorAB.x * vectorAC.x + vectorAB.y * vectorAC.y > 0 && vectorAB.x * vectorAC.x + vectorAB.y * vectorAC.y < distanceAB2) {
-                return link;
+				// don't return yet, get the LAST link hovered (which is drawn on top)
+                hoveredLink = link;
             }
         }
     }
-    return Link{};
+    return hoveredLink;
 }
