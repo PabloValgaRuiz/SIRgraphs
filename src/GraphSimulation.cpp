@@ -60,8 +60,8 @@ void GraphSimulation::addForces() {
         float distance = sqrt(distanceVec.x * distanceVec.x + distanceVec.y * distanceVec.y);
         Vec2 normalizedDistanceVec = Vec2{distanceVec.x / (distance + 0.01f), distanceVec.y / (distance + 0.01f)};
         Vec2 attractionStrength;
-        attractionStrength.x = springStiffness * (springLength - distance) * normalizedDistanceVec.x;
-        attractionStrength.y = springStiffness * (springLength - distance) * normalizedDistanceVec.y;
+        attractionStrength.x = springStiffness * (springLength - distance) * normalizedDistanceVec.x * link.weight;
+        attractionStrength.y = springStiffness * (springLength - distance) * normalizedDistanceVec.y * link.weight;
 
         accel[nodeA].x += attractionStrength.x;
         accel[nodeA].y += attractionStrength.y;
@@ -95,12 +95,12 @@ void GraphSimulation::UpdateSIR(float deltaTime)
         int nodeB = link.nodeB;
 
         if (stateSIR[nodeA] == I && stateSIR[nodeB] == S) {
-            if (dist(rng) < lambdaInfection * deltaTime) {
+            if (dist(rng) < lambdaInfection * deltaTime * link.weight) {
                 newStateSIR[nodeB] = I;
             }
         }
         else if (stateSIR[nodeA] == S && stateSIR[nodeB] == I) {
-            if (dist(rng) < lambdaInfection * deltaTime) {
+            if (dist(rng) < lambdaInfection * deltaTime * link.weight) {
                 newStateSIR[nodeA] = I;
             }
         }
@@ -125,8 +125,8 @@ void GraphSimulation::updateKuramoto(float deltaTime) {
     for (const auto& link : links) {
         float phaseDiff = phaseKur[link.nodeB] - phaseKur[link.nodeA];
         float sinphase = sinf(phaseDiff);
-        newPhaseKur[link.nodeA] += couplingStrength * sinphase * deltaTime;
-        newPhaseKur[link.nodeB] -= couplingStrength * sinphase * deltaTime;
+        newPhaseKur[link.nodeA] += couplingStrength * sinphase * deltaTime * link.weight;
+        newPhaseKur[link.nodeB] -= couplingStrength * sinphase * deltaTime * link.weight;
     }
     
     for (int i = 0; i < phaseKur.size(); i++) {
@@ -450,6 +450,11 @@ void GraphSimulation::saveGraphML()
     keyY.append_attribute("attr.name") = "y";
     keyY.append_attribute("attr.type") = "float";
 
+    auto keyWeight = graphml.append_child("key");
+    keyWeight.append_attribute("id") = "d2";
+    keyWeight.append_attribute("for") = "edge";
+    keyWeight.append_attribute("attr.name") = "weight";
+    keyWeight.append_attribute("attr.type") = "float";
 
     auto graph = graphml.append_child("graph");
     graph.append_attribute("id").set_value("graph");
@@ -472,6 +477,11 @@ void GraphSimulation::saveGraphML()
         auto edge = graph.append_child("edge");
         edge.append_attribute("source").set_value("n" + std::to_string(link.nodeA));
         edge.append_attribute("target").set_value("n" + std::to_string(link.nodeB));
+
+        auto dataY = edge.append_child("data");
+        dataY.append_attribute("key") = "d2";
+        dataY.append_child(pugi::node_pcdata).set_value(std::to_string(link.weight).c_str());
+
     }
 
     if (!doc.save_file(path.c_str())){
@@ -501,7 +511,7 @@ Link GraphSimulation::GetHoveredLink(Vec2 localMousePos)
 {
     // get rectangle from the link and see if the mouse is in it
 
-    float width = 4.0f;// (*2/2); //half the width each side, but also twice so it's easier to click (since the line is thin)
+    float width = 3.0f;// (*2/2); //half the width each side, but also twice so it's easier to click (since the line is thin)
     for (const auto& link : links) {
 
 
@@ -515,7 +525,8 @@ Link GraphSimulation::GetHoveredLink(Vec2 localMousePos)
         //CHECK: AB_ort dot AC < 2 * 2 (proof below, also don't need to check >0 cause the width goes both ways)
         float distanceAB2 = vectorAB.x * vectorAB.x + vectorAB.y * vectorAB.y;
         float projectionABortAC2 = vectorAB.y * vectorAC.x - vectorAB.x * vectorAC.y;
-        if (projectionABortAC2 * projectionABortAC2 < width * width * distanceAB2) {
+        float weightedWidth = (width * sqrt(std::min(link.weight, 4.0f)));
+        if (projectionABortAC2 * projectionABortAC2 < weightedWidth * weightedWidth * distanceAB2) {
 
             // CHECK: 0 < AB dot AC < AB dot AB (proof: 0 < Proj < LenAB, where Proj = ABunit dot AC -> lenAB * Proj = AB dot AC)
             if (vectorAB.x * vectorAC.x + vectorAB.y * vectorAC.y > 0 && vectorAB.x * vectorAC.x + vectorAB.y * vectorAC.y < distanceAB2) {

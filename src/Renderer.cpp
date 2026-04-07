@@ -259,7 +259,7 @@ void Renderer::passBufferNodes(const GraphSimulation& simulation, const Interact
 			phase = (1 + std::cos(phase))*0.5;
 			phase = phase * phase;
 			phase = phase * phase; // ((1 + cosx) ^ 4)/2
-			color = { phase, phase, 1.0f };
+			color = { phase, phase, 1.0f - phase }; // blue to yellow
 			break;
 		}
 		if (iState.hoveredNodeId == node) {
@@ -418,6 +418,7 @@ void Renderer::passBufferLinks(const GraphSimulation& simulation, const Interact
 	
 	// 1 vertex per node, draw them as GL_POINTS
 
+
 	for (const auto& link : simulation.getLinks()) {
 		// Set color
 		RGB color{1.0f, 1.0f, 1.0f}; //  white
@@ -428,7 +429,7 @@ void Renderer::passBufferLinks(const GraphSimulation& simulation, const Interact
 		Vec2 worldPosA = simulation.getNodePositions()[link.nodeA];
 		Vec2 worldPosB = simulation.getNodePositions()[link.nodeB];
 
-		pushLine(&vertices, worldPosA, worldPosB, color, 3.0f * link.weight);
+		pushLine(&vertices, worldPosA, worldPosB, color, 3.0f * sqrt(std::min(link.weight, 4.0f)));
 	}
 	if (iState.draggedNodeId != -1) {
 		RGB color{ 1.0f, 1.0f, 1.0f }; //  white
