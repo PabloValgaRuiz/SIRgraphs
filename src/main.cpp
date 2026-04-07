@@ -77,7 +77,7 @@ int main(int, char**)
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     //ANTIALIASING
     glfwWindowHint(GLFW_SAMPLES, 4); // 4x MSAA (Standard high-quality anti-aliasing)
-    GLFWwindow* window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "SIRgraphs", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow((int)(1400 * main_scale), (int)(1000 * main_scale), "SIRgraphs", nullptr, nullptr);
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);
@@ -87,6 +87,11 @@ int main(int, char**)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    // DO NOT OPEN A IMGUI INI FILE. BUILD THE LAYOUT ON Application::run()
+    io.IniFilename = nullptr;
+
+
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking

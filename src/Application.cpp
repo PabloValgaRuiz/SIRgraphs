@@ -2,6 +2,8 @@
 #include "GraphSimulation.h"
 #include <random>
 
+// For building the docking layout
+#include <imgui_internal.h>
 
 MyApp::MyApp()
 {
@@ -29,6 +31,33 @@ ImVec4 MyApp::setNodeColor(int node, int hoveredNodeId) {
 
 // links
 
+static void ImGUIDockSetup(){
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGuiID dockspace_id = ImGui::DockSpaceOverViewport(0, viewport);
+
+    static bool first_time = true;
+    if (first_time)
+    {
+        first_time = false;
+
+        // Clear any previous layout
+        ImGui::DockBuilderRemoveNode(dockspace_id);
+        ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
+
+        // Split the dockspace
+        ImGuiID dock_main_id = dockspace_id;
+        ImGuiID dock_right_id = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 400.0f / 1400, nullptr, &dock_main_id);
+
+        // Dock the windows into their respective areas.
+        // Make sure to replace "Parameters" with whatever window title you use inside ParameterWindowUI()
+        ImGui::DockBuilderDockWindow("Simulation Viewport", dock_main_id);
+        ImGui::DockBuilderDockWindow("Parameters window", dock_right_id);
+
+        ImGui::DockBuilderFinish(dockspace_id);
+    }
+    // -----------------------------------
+}
 
 void MyApp::run() {
 
@@ -36,18 +65,14 @@ void MyApp::run() {
     float deltaTime = ImGui::GetIO().DeltaTime;
     if (deltaTime > 0.04f) deltaTime = 0.04f;
 
-    // ImGui dockspace setup
-
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::DockSpaceOverViewport(0, viewport);
-
-    
+    // ImGui dockspace setup -> create a dockspace with the viewport and the parameter window
+    ImGUIDockSetup();
 
     // Draw the UI panels and buttons
     ParameterWindowUI();
 
     // create a new ImGui window called "Simulation Viewport"
-    ImGui::SetNextWindowSize(ImVec2(800, 800), ImGuiCond_FirstUseEver);
+    //ImGui::SetNextWindowSize(ImVec2(800, 800), ImGuiCond_FirstUseEver);
     ImGui::Begin("Simulation Viewport", nullptr);
 
 
