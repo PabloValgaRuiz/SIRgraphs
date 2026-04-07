@@ -68,6 +68,9 @@ if (WIN32)
     )
 
 elseif (APPLE)
+    
+    set_target_properties(SIRgraphs PROPERTIES 
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in")
 
     # download and include glfw
     include(FetchContent)
