@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <iostream>
 #include <random>
+#include <string>
 #include "pcg_random.hpp"
 
 #include "2DUtils.h"
@@ -26,7 +27,9 @@ class Link {
 public:
     int nodeA;
     int nodeB;
-    float weight{ 1.0 };
+
+    // WEIGHT IS MUTABLE, DON'T USE IT FOR THE HASHING
+    float mutable weight{ 1.0 };
 
     Link() {
         nodeA = -1;
@@ -46,6 +49,9 @@ public:
     bool operator==(const Link& other) const {
         return nodeA == other.nodeA && nodeB == other.nodeB;
     }
+    bool operator!=(const Link& other) const {
+        return nodeA != other.nodeA || nodeB != other.nodeB;
+    }
 };
 
 namespace std {
@@ -55,6 +61,7 @@ namespace std {
             // standard way to combine two hashes.
             // hash nodeA, hash nodeB, shift the bits of B, and XOR them together.
             return hash<int>()(l.nodeA) ^ (hash<int>()(l.nodeB) << 1);
+            // DO NOT USE WEIGHT FOR HASHING
         }
     };
 }
@@ -93,11 +100,16 @@ public:
         links.emplace(nodeA, nodeB, weight);
     }
 
-    int addNode(Vec2 pos, Vec2 accel = Vec2{ 0,0 }, float r = 20.0f, StateSIR stateSIR = S) {
+    int addNode(Vec2 pos, Vec2 accel = Vec2{ 0,0 }, float r = 20.0f, StateSIR stateSIR = S, std::string _label = "") {
     
         static std::uniform_real_distribution<float> dist(0, 2 * PI);
         static std::uniform_real_distribution<float> freq_dist(0.8f, 1.2f);
-
+        
+        if (_label == std::string(""))
+            this->label.push_back(std::to_string((int)position.size()));
+        else 
+            this->label.push_back(_label);
+        
         this->position.push_back(pos);
         this->last_position.push_back(pos);
         this->accel.push_back(accel);
@@ -149,6 +161,7 @@ public:
 
         // Swap the nodes if it's not the last one
         if (id != last_id){
+            label[id] = label[last_id];
             position[id] = position[last_id];
             last_position[id] = last_position[last_id];
             accel[id] = accel[last_id];
@@ -158,6 +171,7 @@ public:
             frequency[id] = frequency[last_id];
         }
         // shrink the arrays
+        this->label.pop_back();
         this->position.pop_back();
         this->last_position.pop_back();
         this->accel.pop_back();
@@ -168,6 +182,7 @@ public:
     }
 
     void deleteGraph(){
+        label.clear();
         position.clear();
         last_position.clear();
         accel.clear();
@@ -213,6 +228,12 @@ public:
         phaseKur[nodeId] = newphase;
     }
 
+    const std::vector<std::string>& getNodeLabels() const {
+        return label;
+    }
+    std::vector<std::string>& getNodeLabels() {
+        return label;
+    }
     const std::vector<Vec2>& getNodePositions() const{
         return position;
 	}
@@ -222,7 +243,12 @@ public:
     const std::unordered_set<Link>& getLinks() const{
 		return links;
     }
-
+    std::unordered_set<Link>& getLinks() {
+        return links;
+    }
+    float& getLinkWeight(const Link& _link) {
+        return links.find(_link)->weight;
+    }
 public:
     // Physics constants
     float repulsionForce = 2000000.0f;
@@ -247,6 +273,8 @@ private:
     pcg64 rng{ pcg_extras::seed_seq_from<std::random_device>{} };
 
     // Node data
+    std::vector<std::string> label;
+
     std::vector<Vec2> position;
     std::vector<Vec2> last_position;
     std::vector<Vec2> accel;

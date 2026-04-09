@@ -111,7 +111,6 @@ void MyApp::run() {
     
     renderer.Resize((int)camera.viewportSize.x, (int)camera.viewportSize.y);
     renderer.Render(simulation, iState, camera, simType);
-
     uint32_t textureID = renderer.getTextureID();
     ImGui::Image(
         (ImTextureID)(intptr_t)textureID,
@@ -119,6 +118,24 @@ void MyApp::run() {
         ImVec2(0, 1), // Top-left UV
         ImVec2(1, 0)  // Bottom-right UV
     );
+
+    
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    // SHOW THE LABELS OF THE NODES
+    if (isCreationMode == 2) {
+        for (int i = 0; i < simulation.getNodePositions().size(); i++) {
+            ImGui::PushFont(NULL, 24);
+            const std::string& text = simulation.getNodeLabels()[i];
+            ImGui::PopFont();
+            ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+            ImVec2 textCenter = camera.WorldToScreen(simulation.getNodePositions()[i] + Vec2{ 0, 0 });
+            ImVec2 textPos = ImVec2{ textCenter.x - textSize.x * 0.65f, textCenter.y - textSize.y*0.65f};
+            //ImGui::Text(text.c_str());
+            draw_list->AddText(NULL, 24, textPos, IM_COL32(200, 200, 200, 255), text.c_str());
+
+        }
+    }
+
 
     // DEBUG ---------------------------------------------
 	// set the cursor position to the top-left corner of the window to draw text there
@@ -147,9 +164,42 @@ void MyApp::run() {
         ImGui::Text(nodeIDtext);
     }
 #endif
+
+    
     // ---------------------------------------------
     ImGui::End();
 
+    // NODE DATA WHEN IN NETWORK DATA MODE
+    if (isCreationMode == 2) {
+        // new window
+        if (infoPanelNode != -1) {
+            static int oldPanelNode = -1;
+            if(oldPanelNode != infoPanelNode)
+                ImGui::SetNextWindowPos(camera.WorldToScreen(simulation.getNodePositions()[infoPanelNode]));
+            oldPanelNode = infoPanelNode;
+            ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Appearing);
+            ImGui::Begin("Info window");
+            static char label[32] = "";
+            auto& nodeLabel = simulation.getNodeLabels()[infoPanelNode];
+            snprintf(label, sizeof(label), nodeLabel.c_str());
+            ImGui::InputTextWithHint("Node label", "Enter label", label, IM_COUNTOF(label));
+            nodeLabel = label;
+            ImGui::End();
+        }
+        if (infoPanelLink.nodeA != -1) {
+            static Link oldPanelLink = Link{};
+            if (oldPanelLink != infoPanelLink)
+                ImGui::SetNextWindowPos(camera.WorldToScreen(iState.worldMousePos));
+            oldPanelLink = infoPanelLink;
+            ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_Appearing);
+            ImGui::Begin("Info window");
+
+            float& weight = simulation.getLinks().find(infoPanelLink)->weight;
+            ImGui::InputFloat("Link weight", &weight, 0.0f, 0.0f, "%.2f");
+
+            ImGui::End();
+        }
+    }
     //ImGui::ShowDemoWindow();
 }
 
@@ -187,6 +237,7 @@ void MyApp::render()
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * camera.zoom);
     }
 
+    
 }
 
 void MyApp::UpdateViewportCamera() {
@@ -275,6 +326,27 @@ void MyApp::HandleInput(){
 
             }
         }
+        // MANIPULATE INFO
+        else if (isCreationMode == 2) {
+            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                if (iState.hoveredNodeId != -1) {
+                    // display info of node in the right panel
+                    infoPanelNode = iState.hoveredNodeId;
+                    infoPanelLink = Link{};
+
+                }
+                else if (iState.hoveredLink.nodeA != -1){
+                    infoPanelNode = -1;
+                    infoPanelLink = iState.hoveredLink;
+                }
+                else {
+                    infoPanelNode = -1;
+                    infoPanelLink = Link{};
+
+                }
+
+            }
+        }
     }
 
 }
@@ -297,8 +369,8 @@ void MyApp::ParameterWindowUI(){
     if (ImGui::Button("Create regular graph", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
         simulation.createGridGraph(numNodesRGx, numNodesRGy, camera.viewportSize.x, camera.viewportSize.y);
     }
-    ImGui::DragInt("Width (RG)", &numNodesRGx, 0.1f, 1, 20);
-    ImGui::DragInt("Height (RG)", &numNodesRGy, 0.1f, 1, 20);
+    ImGui::DragInt("Width (RG)", &numNodesRGx, 0.1f, 1, 40);
+    ImGui::DragInt("Height (RG)", &numNodesRGy, 0.1f, 1, 40);
 
     static int numNodesER = 20;
     static float pER = 0.05f;
@@ -347,11 +419,11 @@ void MyApp::ParameterWindowUI(){
 
     ImGui::PushItemWidth(100.0f);
 
-    ImGui::DragFloat("Repulsion force", &simulation.repulsionForce, 10000.0f, 10000.0f, 20000000.0f, "%.0f");
-    ImGui::DragFloat("Spring Length", &simulation.springLength, 0.5f, 5.0f, 500.0f, "%.0f");
-    ImGui::DragFloat("Spring Stiffness", &simulation.springStiffness, 1.0f, 25.0f, 2500.0f, "%.0f");
-    ImGui::DragFloat("Damping", &simulation.damping, 0.001f, 0.5f, 1.0f, "%.2f");
-    ImGui::DragFloat("Central gravity", &simulation.centralGravity, 2.0f, 1.0f, 3000.0f, "%.0f");
+    ImGui::DragFloat("Repulsion force", &simulation.repulsionForce, 10000.0f, 0.0f, 20000000.0f, "%.0f");
+    ImGui::DragFloat("Spring Length", &simulation.springLength, 0.5f, 0.0f, 500.0f, "%.0f");
+    ImGui::DragFloat("Spring Stiffness", &simulation.springStiffness, 1.0f, 0.0f, 2500.0f, "%.0f");
+    ImGui::DragFloat("Damping", &simulation.damping, 0.001f, 0.0f, 1.0f, "%.2f");
+    ImGui::DragFloat("Central gravity", &simulation.centralGravity, 2.0f, 0.0f, 3000.0f, "%.0f");
 
     ImGui::PopItemWidth();
 
@@ -402,6 +474,7 @@ void MyApp::ParameterWindowUI(){
 
         // Switch between creating network and infecting nodes
         ImGui::RadioButton("Create network", &isCreationMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Network data", &isCreationMode, 2);
         ImGui::RadioButton("Infect nodes", &isCreationMode, 1);
 
         drawInfectedPlot();
@@ -415,6 +488,7 @@ void MyApp::ParameterWindowUI(){
 
         // Switch between creating network and infecting nodes
         ImGui::RadioButton("Create network", &isCreationMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Network data", &isCreationMode, 2);
         ImGui::RadioButton("Reset phases", &isCreationMode, 1);
 
         if (ImGui::Button("Randomize all phases", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
@@ -423,6 +497,7 @@ void MyApp::ParameterWindowUI(){
         if (ImGui::Button("Synchronize all phases", ImVec2(ImGui::GetContentRegionAvail().x, 20))) {
             simulation.SynchronizePhases();
         }
+
     }
 
     ImGui::End();

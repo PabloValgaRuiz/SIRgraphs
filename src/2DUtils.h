@@ -8,19 +8,19 @@ struct Vec2 {
     float x;
     float y;
 
-    Vec2 operator+(const Vec2& vector) {
+    Vec2 operator+(const Vec2& vector) const {
         return Vec2{ x + vector.x, y + vector.y };
     }
-    Vec2 operator-(const Vec2& vector) {
+    Vec2 operator-(const Vec2& vector) const {
         return Vec2{ x - vector.x, y - vector.y };
     }
-    float operator*(const Vec2& vector) {
+    float operator*(const Vec2& vector) const {
         return x * vector.x + y * vector.y;
     }
-    Vec2 operator*(float k) {
+    Vec2 operator*(float k) const {
         return Vec2{ x * k, y * k };
     }
-    Vec2 operator/(float k) {
+    Vec2 operator/(float k) const {
         return Vec2{ x / k, y / k };
     }
 };
