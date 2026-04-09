@@ -107,7 +107,6 @@ void MyApp::run() {
     
     renderer.Resize((int)camera.viewportSize.x, (int)camera.viewportSize.y);
     renderer.Render(simulation, iState, camera, simType);
-
     uint32_t textureID = renderer.getTextureID();
     ImGui::Image(
         (ImTextureID)(intptr_t)textureID,
@@ -115,6 +114,24 @@ void MyApp::run() {
         ImVec2(0, 1), // Top-left UV
         ImVec2(1, 0)  // Bottom-right UV
     );
+
+    
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    // SHOW THE LABELS OF THE NODES
+    if (isCreationMode == 2) {
+        for (int i = 0; i < simulation.getNodePositions().size(); i++) {
+            ImGui::PushFont(NULL, 24);
+            const std::string& text = simulation.getNodeLabels()[i];
+            ImGui::PopFont();
+            ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
+            ImVec2 textCenter = camera.WorldToScreen(simulation.getNodePositions()[i] + Vec2{ 0, 0 });
+            ImVec2 textPos = ImVec2{ textCenter.x - textSize.x * 0.65f, textCenter.y - textSize.y*0.65f};
+            //ImGui::Text(text.c_str());
+            draw_list->AddText(NULL, 24, textPos, IM_COL32(200, 200, 200, 255), text.c_str());
+
+        }
+    }
+
 
     // DEBUG ---------------------------------------------
 	// set the cursor position to the top-left corner of the window to draw text there
@@ -144,19 +161,7 @@ void MyApp::run() {
     }
 #endif
 
-    // SHOW THE LABELS OF THE NODES
-    if (isCreationMode == 2) {
-        for (int i = 0; i < simulation.getNodePositions().size(); i++) {
-            const std::string& text = simulation.getNodeLabels()[i];
-            ImGui::PushFont(NULL, 16);
-            ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
-            ImVec2 textCenter = camera.WorldToScreenNoP0(simulation.getNodePositions()[i] + Vec2{ 0, -simulation.getNodeRadius()[i] });
-            ImGui::SetCursorPos(ImVec2{ textCenter.x - textSize.x * 0.5f + 8, textCenter.y });
-            ImGui::Text(text.c_str());
-            ImGui::PopFont();
-
-        }
-    }
+    
     // ---------------------------------------------
     ImGui::End();
 
@@ -228,6 +233,7 @@ void MyApp::render()
         draw_list->AddLine(screenDraggedPosition, mousePos, ImGui::GetColorU32(ImVec4(1.0, 1.0, 1.0, 1.0)), 4.0f * camera.zoom);
     }
 
+    
 }
 
 void MyApp::UpdateViewportCamera() {
