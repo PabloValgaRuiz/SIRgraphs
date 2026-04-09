@@ -43,7 +43,8 @@ private:
     InteractionState iState{};
 	bool isPhysicsPlaying = true;
     bool isSimulationPlaying = false;
-	float deltaTimeAccumulator = 0.0f;
+	float deltaTimeAccumulatorPhysics = 0.0f;
+    float deltaTimeAccumulatorSims = 0.0f;
 
     // Switch between creating network and infecting nodes
     int isCreationMode = 0;

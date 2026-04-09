@@ -82,24 +82,28 @@ void MyApp::run() {
 
 
     // Run simulations
-    deltaTimeAccumulator += deltaTime;
-    while (deltaTimeAccumulator >= 1.0 / 75) {
+    deltaTimeAccumulatorPhysics += deltaTime;
+    while (deltaTimeAccumulatorPhysics >= 1.0 / 75) {
 		if (isPhysicsPlaying) {
             simulation.UpdatePhysics(1.0f / 75);
         }
+		deltaTimeAccumulatorPhysics -= 1.0f / 75;
+    }
+	deltaTimeAccumulatorSims += deltaTime;
+    while (deltaTimeAccumulatorSims >= 1.0 / 75){
         if (isSimulationPlaying) {
             switch (simType) {
             case SIM_SIR:
                 simulation.UpdateSIR(1.0f / 75);
-                deltaTimeAccumulator -= 1.0f / 75;
+                deltaTimeAccumulatorSims -= 1.0f / 75;
                 break;
             case SIM_KURAMOTO:
                 simulation.updateKuramoto(0.25f / 75);
-                deltaTimeAccumulator -= 0.25f / 75;
+                deltaTimeAccumulatorSims -= 0.25f / 75;
                 break;
             }
         }
-        else deltaTimeAccumulator -= 1.0f / 75;
+        else deltaTimeAccumulatorSims -= 1.0f / 75;
     }
 
 
