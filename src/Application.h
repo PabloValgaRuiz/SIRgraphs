@@ -45,9 +45,12 @@ private:
     bool isSimulationPlaying = false;
 	float deltaTimeAccumulator = 0.0f;
 
-    // Switch between creating network and infecting nodes
+    // Switch between creating network and infecting nodes and info mode
     int isCreationMode = 0;
 
     // Pick dynamics to display and affect
     SimType simType = SIM_SIR;
+
+    int infoPanelNode = -1;
+    Link infoPanelLink{};
 };
