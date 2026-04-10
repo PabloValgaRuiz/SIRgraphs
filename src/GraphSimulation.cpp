@@ -345,8 +345,8 @@ void GraphSimulation::readGraphML()
         std::unordered_map<std::string, int> ids;
         std::uniform_real_distribution<float> dist;
 
-        bool isPositionData = false, isWeightData = false;
-        std::string xkey, ykey, weightkey;
+        bool isPositionData = false, isWeightData = false, isLabelData = false;
+        std::string xkey, ykey, weightkey, labelkey;
 
         // Navigate to the graph element
         auto graphml = doc.child("graphml");
@@ -355,6 +355,7 @@ void GraphSimulation::readGraphML()
         auto xkeynode = graphml.find_child_by_attribute("key", "attr.name", "x");
         auto ykeynode = graphml.find_child_by_attribute("key", "attr.name", "y");
         auto weightkeynode = graphml.find_child_by_attribute("key", "attr.name", "weight");
+        auto labelkeynode = graphml.find_child_by_attribute("key", "attr.name", "label");
         if (xkeynode && ykeynode) {
             isPositionData = true;
             xkey = xkeynode.attribute("id").value();
@@ -363,6 +364,10 @@ void GraphSimulation::readGraphML()
         if (weightkeynode) {
             isWeightData = true;
             weightkey = weightkeynode.attribute("id").value();
+        }
+        if (labelkeynode) {
+            isLabelData = true;
+            labelkey = labelkeynode.attribute("id").value();
         }
         for (pugi::xml_node node : graph.children("node")) {
             int i = addNode(Vec2{ dist(rng), dist(rng) });
@@ -373,7 +378,9 @@ void GraphSimulation::readGraphML()
                 auto y = node.find_child_by_attribute("data", "key", ykey.c_str());
                 position[i] = Vec2{ x.text().as_float(), y.text().as_float() };
             }
-
+            if (isLabelData) {
+                label[i] = node.find_child_by_attribute("data", "key", labelkey.c_str()).text().as_string();
+            }
         }
 
         for (pugi::xml_node edge : graph.children("edge")) {
@@ -450,12 +457,21 @@ void GraphSimulation::saveGraphML()
     keyY.append_attribute("attr.name") = "y";
     keyY.append_attribute("attr.type") = "float";
 
+
     // WEIGHT
     auto keyWeight = graphml.append_child("key");
     keyWeight.append_attribute("id") = "d2";
     keyWeight.append_attribute("for") = "edge";
     keyWeight.append_attribute("attr.name") = "weight";
     keyWeight.append_attribute("attr.type") = "float";
+
+    // LABEL
+    
+    auto keyLabel = graphml.append_child("key");
+    keyLabel.append_attribute("id") = "d3";
+    keyLabel.append_attribute("for") = "node";
+    keyLabel.append_attribute("attr.name") = "label";
+    keyLabel.append_attribute("attr.type") = "string";
 
     auto graph = graphml.append_child("graph");
     graph.append_attribute("id").set_value("graph");
@@ -472,6 +488,10 @@ void GraphSimulation::saveGraphML()
         auto dataY = node.append_child("data");
         dataY.append_attribute("key") = "d1";
         dataY.append_child(pugi::node_pcdata).set_value(std::to_string(position[i].y).c_str());
+
+        auto dataLabel = node.append_child("data");
+        dataLabel.append_attribute("key") = "d3";
+        dataLabel.append_child(pugi::node_pcdata).set_value(label[i].c_str());
 
     }
     for (const auto& link : links) {

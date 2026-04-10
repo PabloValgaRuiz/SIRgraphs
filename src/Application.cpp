@@ -120,18 +120,18 @@ void MyApp::run() {
     );
 
     
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
     // SHOW THE LABELS OF THE NODES
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
     if (isCreationMode == 2) {
         for (int i = 0; i < simulation.getNodePositions().size(); i++) {
-            ImGui::PushFont(NULL, 24);
+            ImGui::PushFont(NULL, 24 * camera.zoom);
             const std::string& text = simulation.getNodeLabels()[i];
             ImGui::PopFont();
             ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
             ImVec2 textCenter = camera.WorldToScreen(simulation.getNodePositions()[i] + Vec2{ 0, 0 });
-            ImVec2 textPos = ImVec2{ textCenter.x - textSize.x * 0.65f, textCenter.y - textSize.y*0.65f};
+            ImVec2 textPos = ImVec2{ textCenter.x - textSize.x * 0.68f * camera.zoom, textCenter.y - textSize.y*0.68f * camera.zoom };
             //ImGui::Text(text.c_str());
-            draw_list->AddText(NULL, 24, textPos, IM_COL32(200, 200, 200, 255), text.c_str());
+            draw_list->AddText(NULL, 24 * camera.zoom, textPos, IM_COL32(210, 210, 210, 255), text.c_str());
 
         }
     }
