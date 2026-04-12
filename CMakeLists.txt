@@ -8,7 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui)
 set(GLFW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw)
 
-# Gather all the ImGui source files
+# Gather all the ImGui source files (don't need docs, tests and examples')
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
     #${IMGUI_DIR}/imgui_demo.cpp
@@ -38,6 +41,14 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/PugiXML)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/nativefiledialog-extended)
 
+if (APPLE) # PLIST to let macos know the graphml extension
+    set_target_properties(SIRgraphs PROPERTIES 
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in")
+    # to compile glfw
+    enable_language(OBJC)
+
+endif()
+
 # build an executable with ImGui's code and the app's code
 add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES} ${GLAD_SOURCES})
 
@@ -64,30 +75,27 @@ target_include_directories(SIRgraphs PRIVATE
 
 
 if (APPLE)
-    
-    set_target_properties(SIRgraphs PROPERTIES 
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in")
-
 
     # Rely on macos opengl installation
     find_package(OpenGL REQUIRED)
 
-    target_link_libraries(SIRgraphs PRIVATE
-        OpenGL::GL
-    )
-    
     # Apple requires these
     find_library(COCOA_FRAMEWORK Cocoa)
     find_library(IOKIT_FRAMEWORK IOKit)
     find_library(COREVIDEO_FRAMEWORK CoreVideo)
-
-    target_link_libraries(SIRgraphs PRIVATE ${COCOA_FRAMEWORK} ${IOKIT_FRAMEWORK} ${COREVIDEO_FRAMEWORK})
-    
     # and these so that nativefiledialog-extended works
     find_library(APPKIT_FRAMEWORK AppKit)
     find_library(UTI_FRAMEWORK UniformTypeIdentifiers)
 
-    target_link_libraries(SIRgraphs PRIVATE 
+    
+
+    target_link_libraries(SIRgraphs PRIVATE
+        OpenGL::GL
+
+        ${COCOA_FRAMEWORK}
+        ${IOKIT_FRAMEWORK}
+        ${COREVIDEO_FRAMEWORK}
+
         ${APPKIT_FRAMEWORK} 
         ${UTI_FRAMEWORK}
     )
@@ -95,7 +103,6 @@ if (APPLE)
 elseif (UNIX AND NOT APPLE)
 
     find_package(OpenGL REQUIRED)
-
     target_link_libraries(SIRgraphs PRIVATE OpenGL::GL)
 
 endif()
