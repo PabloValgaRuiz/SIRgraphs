@@ -6,11 +6,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui)
+set(GLFW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw)
 
 # Gather all the ImGui source files
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
-    ${IMGUI_DIR}/imgui_demo.cpp
+    #${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
@@ -31,7 +32,9 @@ set(APP_SOURCES
     src/Renderer.cpp
 )
 
-# LIBRARY FOR READING XML
+# COMPILE EXTERNAL LIBRARIES
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/PugiXML)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/nativefiledialog-extended)
 
@@ -41,12 +44,14 @@ add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES} ${GLAD_SO
 target_link_libraries(SIRgraphs PRIVATE
                 pugixml-static
                 nfd
+                glfw
                 )
 
 target_include_directories(SIRgraphs PRIVATE
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${GLAD_DIR}/include
+    ${GLFW_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/pcg
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/PugiXML/src
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/nativefiledialog-extended/src/include
@@ -56,40 +61,18 @@ target_include_directories(SIRgraphs PRIVATE
 
 # PLATFORM SPECIFIC SETUP
 
-if (WIN32)
-    # Use the pre-compiled GLFW binaries within ImGui
-    target_include_directories(SIRgraphs PRIVATE
-        ${IMGUI_DIR}/examples/libs/glfw/include
-    )
-    
-    target_link_libraries(SIRgraphs PRIVATE
-        ${IMGUI_DIR}/examples/libs/glfw/lib-vc2010-64/glfw3.lib
-        opengl32
-    )
 
-elseif (APPLE)
+
+if (APPLE)
     
     set_target_properties(SIRgraphs PROPERTIES 
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in")
 
-    # download and include glfw
-    include(FetchContent)
-    FetchContent_Declare(
-        glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.4
-    )
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(glfw)
-
 
     # Rely on macos opengl installation
     find_package(OpenGL REQUIRED)
-    
+
     target_link_libraries(SIRgraphs PRIVATE
-        glfw
         OpenGL::GL
     )
     
@@ -113,18 +96,6 @@ elseif (UNIX AND NOT APPLE)
 
     find_package(OpenGL REQUIRED)
 
-    include(FetchContent)
+    target_link_libraries(SIRgraphs PRIVATE OpenGL::GL)
 
-    FetchContent_Declare(
-        glfw
-        GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.4
-    )
-
-    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(glfw)
-
-    target_link_libraries(SIRgraphs PRIVATE glfw OpenGL::GL)
 endif()
