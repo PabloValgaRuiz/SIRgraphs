@@ -1,5 +1,9 @@
-cmake_minimum_required(VERSION 3.14)
-project(SIRgraphs)
+cmake_minimum_required(VERSION 3.16.3)
+project(SIRgraphs LANGUAGES C CXX)
+
+if (APPLE)
+    enable_language(OBJC)
+endif()
 
 # Use modern C++
 set(CMAKE_CXX_STANDARD 17)
@@ -45,13 +49,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/vendor/nativefiledialog-extended)
 # build an executable with ImGui's code and the app's code
 add_executable(SIRgraphs MACOSX_BUNDLE ${APP_SOURCES} ${IMGUI_SOURCES} ${GLAD_SOURCES})
 
-if (APPLE) # PLIST to let macos know the graphml extension
-    set_target_properties(SIRgraphs PROPERTIES 
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in")
-    # to compile glfw
-    enable_language(OBJC)
-endif()
-
 target_link_libraries(SIRgraphs PRIVATE
                 pugixml-static
                 nfd
@@ -75,6 +72,10 @@ target_include_directories(SIRgraphs PRIVATE
 
 
 if (APPLE)
+
+    # PLIST to let macos know the graphml extension
+    set_target_properties(SIRgraphs PROPERTIES 
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in")
 
     # Rely on macos opengl installation
     find_package(OpenGL REQUIRED)
