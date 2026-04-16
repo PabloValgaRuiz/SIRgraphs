@@ -1,5 +1,5 @@
 name: Build Cross-Platform
-# File Generated with Google Gemini
+# include in the future path to fonts and compress
 # Trigger this script every time code is pushed to the 'main' branch
 on:
   push:
